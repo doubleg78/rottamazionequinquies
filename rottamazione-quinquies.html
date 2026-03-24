@@ -844,7 +844,7 @@
 
 <!-- PDF.js for parsing -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script>
@@ -1944,44 +1944,97 @@ function renderResults(importo, originario, totalInteressi, totalVersato, schedu
 // CSV EXPORT
 // ============================================================
 
-function exportExcel() {
+async function exportExcel() {
     const { importo, originario } = getInputAmounts();
     if (importo <= 0) return;
-    if (typeof XLSX === 'undefined') {
-        alert('Libreria Excel non caricata. Verifica la connessione internet.');
+    if (typeof ExcelJS === 'undefined') {
+        alert('Libreria ExcelJS non caricata. Verifica la connessione internet.');
         return;
     }
 
     const numRate = state.numRate;
     const dates = generateScheduleDates(numRate);
     const rataFissa = calculateEqualInstallment(importo, INTEREST_RATE, dates);
-    const wb = XLSX.utils.book_new();
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'Giacomo Greci';
+    wb.created = new Date();
+
+    // Style constants
+    const primaryColor = '1E40AF';
+    const primaryLight = '2563EB';
+    const accentColor = 'F59E0B';
+    const successColor = '16A34A';
+    const dangerColor = 'DC2626';
+    const headerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: primaryColor } };
+    const headerFont = { bold: true, color: { argb: 'FFFFFF' }, size: 11, name: 'Arial' };
+    const accentFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: accentColor } };
+    const lightBlueFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'DBEAFE' } };
+    const lightGrayFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F8FAFC' } };
+    const lightGreenFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'DCFCE7' } };
+    const lightYellowFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FEF9C3' } };
+    const eurFmt = '#,##0.00" €"';
+    const pctFmt = '0.0%';
+    const thinBorder = {
+        top: { style: 'thin', color: { argb: 'D1D5DB' } },
+        bottom: { style: 'thin', color: { argb: 'D1D5DB' } },
+        left: { style: 'thin', color: { argb: 'D1D5DB' } },
+        right: { style: 'thin', color: { argb: 'D1D5DB' } }
+    };
+
+    // Helper: style a row as section header
+    function sectionHeader(sheet, row, text, cols) {
+        sheet.mergeCells(row, 1, row, cols);
+        const cell = sheet.getCell(row, 1);
+        cell.value = text;
+        cell.font = { bold: true, color: { argb: 'FFFFFF' }, size: 12, name: 'Arial' };
+        cell.fill = headerFill;
+        cell.alignment = { horizontal: 'left', vertical: 'middle' };
+        sheet.getRow(row).height = 28;
+    }
+
+    // Helper: style a label-value pair row
+    function labelValueRow(sheet, row, label, value, fmt, highlight) {
+        const cA = sheet.getCell(row, 1);
+        cA.value = label;
+        cA.font = { bold: false, size: 10, name: 'Arial', color: { argb: '374151' } };
+        cA.alignment = { vertical: 'middle' };
+        cA.border = thinBorder;
+        cA.fill = highlight ? lightYellowFill : { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF' } };
+        const cB = sheet.getCell(row, 2);
+        cB.value = value;
+        cB.font = { bold: true, size: 10, name: 'Arial', color: { argb: highlight ? 'B45309' : '111827' } };
+        cB.alignment = { horizontal: 'right', vertical: 'middle' };
+        cB.border = thinBorder;
+        cB.fill = highlight ? lightYellowFill : { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF' } };
+        if (fmt) cB.numFmt = fmt;
+        sheet.getRow(row).height = 22;
+    }
 
     // ================================================================
     // SHEET 1: Riepilogo
     // ================================================================
-    const riepilogoData = [
-        ['SIMULATORE ROTTAMAZIONE QUINQUIES'],
-        ['Legge n. 199/2025 - Art. 1, commi 82-93'],
-        [],
-        ['RIEPILOGO PIANO DI PAGAMENTO'],
-        [],
-        ['Importo definizione agevolata', importo],
-        ['Importo residuo originario', originario > 0 ? originario : ''],
-        ['Risparmio', originario > 0 ? originario - importo : ''],
-        ['Risparmio %', originario > 0 ? (originario - importo) / originario : ''],
-        [],
-        ['DETTAGLI RATEAZIONE'],
-        [],
-        ['Numero rate', numRate],
-        ['Importo singola rata', rataFissa],
-        ['Tasso interessi dilazione', INTEREST_RATE],
-        ['Decorrenza interessi', '01/08/2026'],
-        ['Prima scadenza', formatDate(dates[0])],
-        ['Ultima scadenza', formatDate(dates[dates.length - 1])],
-    ];
+    const ws1 = wb.addWorksheet('Riepilogo', { properties: { defaultColWidth: 20 } });
+    ws1.columns = [{ width: 38 }, { width: 24 }];
 
-    // Compute totals
+    // Title bar
+    ws1.mergeCells('A1:B1');
+    const titleCell = ws1.getCell('A1');
+    titleCell.value = 'SIMULATORE ROTTAMAZIONE QUINQUIES';
+    titleCell.font = { bold: true, color: { argb: 'FFFFFF' }, size: 16, name: 'Arial' };
+    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: primaryLight } };
+    titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    ws1.getRow(1).height = 36;
+
+    // Accent bar
+    ws1.mergeCells('A2:B2');
+    const subCell = ws1.getCell('A2');
+    subCell.value = 'Legge n. 199/2025 - Art. 1, commi 82-93';
+    subCell.font = { italic: true, color: { argb: '1E3A5F' }, size: 10, name: 'Arial' };
+    subCell.fill = accentFill;
+    subCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    ws1.getRow(2).height = 24;
+
+    // Compute totals for summary
     let residuo = importo, totalInteressi = 0;
     for (let i = 0; i < numRate; i++) {
         let interessi = 0;
@@ -1995,124 +2048,168 @@ function exportExcel() {
         totalInteressi += interessi;
     }
 
-    riepilogoData.push(['Totale interessi', totalInteressi]);
-    riepilogoData.push(['Totale da versare', importo + totalInteressi]);
-    riepilogoData.push([]);
-    riepilogoData.push(['Metodo di calcolo', 'Ammortamento alla francese (rate di pari ammontare)']);
-    riepilogoData.push(['Riferimento normativo', 'L. 199/2025, art. 1, comma 83']);
+    // Section: Riepilogo pagamento
+    sectionHeader(ws1, 4, '  RIEPILOGO PIANO DI PAGAMENTO', 2);
+    labelValueRow(ws1, 6, 'Importo definizione agevolata', importo, eurFmt, true);
+    labelValueRow(ws1, 7, 'Importo residuo originario', originario > 0 ? originario : '', originario > 0 ? eurFmt : null, false);
+    labelValueRow(ws1, 8, 'Risparmio', originario > 0 ? originario - importo : '', originario > 0 ? eurFmt : null, originario > 0);
+    labelValueRow(ws1, 9, 'Risparmio %', originario > 0 ? (originario - importo) / originario : '', originario > 0 ? pctFmt : null, originario > 0);
 
-    const wsRiepilogo = XLSX.utils.aoa_to_sheet(riepilogoData);
+    // Section: Dettagli rateazione
+    sectionHeader(ws1, 11, '  DETTAGLI RATEAZIONE', 2);
+    labelValueRow(ws1, 13, 'Numero rate', numRate, null, false);
+    labelValueRow(ws1, 14, 'Importo singola rata', rataFissa, eurFmt, true);
+    labelValueRow(ws1, 15, 'Tasso interessi dilazione', INTEREST_RATE, pctFmt, false);
+    labelValueRow(ws1, 16, 'Decorrenza interessi', '01/08/2026', null, false);
+    labelValueRow(ws1, 17, 'Prima scadenza', formatDate(dates[0]), null, false);
+    labelValueRow(ws1, 18, 'Ultima scadenza', formatDate(dates[dates.length - 1]), null, false);
+    labelValueRow(ws1, 19, 'Totale interessi', totalInteressi, eurFmt, false);
+    labelValueRow(ws1, 20, 'Totale da versare', importo + totalInteressi, eurFmt, true);
 
-    // Column widths
-    wsRiepilogo['!cols'] = [{ wch: 35 }, { wch: 20 }];
-
-    // Format currency cells
-    const eurFmt = '#.##0,00 €';
-    const pctFmt = '0,0%';
-    ['B6','B7','B8','B14','B19','B20'].forEach(ref => {
-        if (wsRiepilogo[ref] && typeof wsRiepilogo[ref].v === 'number') {
-            wsRiepilogo[ref].z = eurFmt;
-        }
-    });
-    if (wsRiepilogo['B9'] && typeof wsRiepilogo['B9'].v === 'number') wsRiepilogo['B9'].z = pctFmt;
-    if (wsRiepilogo['B15'] && typeof wsRiepilogo['B15'].v === 'number') wsRiepilogo['B15'].z = pctFmt;
-
-    XLSX.utils.book_append_sheet(wb, wsRiepilogo, 'Riepilogo');
+    // Footer info
+    sectionHeader(ws1, 22, '  INFORMAZIONI', 2);
+    labelValueRow(ws1, 24, 'Metodo di calcolo', 'Ammortamento alla francese (rate di pari ammontare)', null, false);
+    labelValueRow(ws1, 25, 'Riferimento normativo', 'L. 199/2025, art. 1, comma 83', null, false);
+    labelValueRow(ws1, 26, 'Generato il', new Date().toLocaleDateString('it-IT'), null, false);
 
     // ================================================================
     // SHEET 2: Piano Ammortamento
     // ================================================================
-    const pianoHeader = ['N°', 'Scadenza', 'Quota Capitale', 'Interessi (3%)', 'Totale Rata', 'Debito Residuo', 'Giorni'];
-    const pianoRows = [pianoHeader];
+    const ws2 = wb.addWorksheet('Piano Ammortamento');
+    ws2.columns = [
+        { width: 6 }, { width: 14 }, { width: 18 }, { width: 18 },
+        { width: 18 }, { width: 18 }, { width: 8 }
+    ];
 
+    // Title
+    ws2.mergeCells('A1:G1');
+    const t2 = ws2.getCell('A1');
+    t2.value = 'PIANO DI AMMORTAMENTO';
+    t2.font = { bold: true, color: { argb: 'FFFFFF' }, size: 14, name: 'Arial' };
+    t2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: primaryLight } };
+    t2.alignment = { horizontal: 'center', vertical: 'middle' };
+    ws2.getRow(1).height = 32;
+
+    // Accent bar
+    ws2.mergeCells('A2:G2');
+    const s2 = ws2.getCell('A2');
+    s2.value = 'Interessi al 3% annuo dal 01/08/2026 - Ammortamento alla francese';
+    s2.font = { italic: true, size: 9, name: 'Arial', color: { argb: '1E3A5F' } };
+    s2.fill = accentFill;
+    s2.alignment = { horizontal: 'center', vertical: 'middle' };
+    ws2.getRow(2).height = 22;
+
+    // Header row
+    const pianoHeaders = ['N°', 'Scadenza', 'Quota Capitale', 'Interessi (3%)', 'Totale Rata', 'Debito Residuo', 'GG'];
+    const hRow = ws2.getRow(4);
+    hRow.height = 26;
+    pianoHeaders.forEach((h, ci) => {
+        const cell = hRow.getCell(ci + 1);
+        cell.value = h;
+        cell.font = headerFont;
+        cell.fill = headerFill;
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        cell.border = thinBorder;
+    });
+
+    // Data rows
     residuo = importo;
     let sumCap = 0, sumInt = 0, sumTot = 0;
-
     for (let i = 0; i < numRate; i++) {
-        let interessi = 0;
-        let giorni = 0;
+        let interessi = 0, giorni = 0;
         if (numRate > 1 && dates[i] > INTEREST_START) {
             const prev = i === 0 ? INTEREST_START : (dates[i-1] > INTEREST_START ? dates[i-1] : INTEREST_START);
-            giorni = (dates[i] - prev) / (1000*60*60*24);
+            giorni = Math.round((dates[i] - prev) / (1000*60*60*24));
             interessi = residuo * INTEREST_RATE * giorni / 365;
         }
         const isLast = (i === numRate - 1);
         const totRata = isLast ? residuo + interessi : rataFissa;
         const quotaCap = totRata - interessi;
         residuo -= quotaCap;
-        sumCap += quotaCap;
-        sumInt += interessi;
-        sumTot += totRata;
+        sumCap += quotaCap; sumInt += interessi; sumTot += totRata;
 
-        // Format date as Excel serial date
-        const d = dates[i];
-        const excelDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+        const r = i + 5;
+        const row = ws2.getRow(r);
+        row.height = 20;
+        const isAlt = i % 2 === 1;
+        const isLastRow = (i === numRate - 1);
+        const rowFill = isLastRow ? lightYellowFill : (isAlt ? lightGrayFill : { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF' } });
+        const rowFont = isLastRow ? { bold: true, size: 10, name: 'Arial' } : { size: 10, name: 'Arial' };
 
-        pianoRows.push([
-            i + 1,
-            excelDate,
-            Math.round(quotaCap * 100) / 100,
-            Math.round(interessi * 100) / 100,
-            Math.round(totRata * 100) / 100,
-            Math.round(Math.max(0, residuo) * 100) / 100,
-            giorni
-        ]);
+        const vals = [i + 1, dates[i], Math.round(quotaCap * 100) / 100, Math.round(interessi * 100) / 100, Math.round(totRata * 100) / 100, Math.round(Math.max(0, residuo) * 100) / 100, giorni];
+        const fmts = [null, 'DD/MM/YYYY', eurFmt, eurFmt, eurFmt, eurFmt, null];
+        const aligns = ['center', 'center', 'right', 'right', 'right', 'right', 'center'];
+
+        vals.forEach((v, ci) => {
+            const cell = row.getCell(ci + 1);
+            cell.value = v;
+            cell.font = ci === 3 && interessi === 0 ? { ...rowFont, color: { argb: successColor }, italic: true } : (ci === 4 ? { ...rowFont, bold: true } : rowFont);
+            cell.fill = rowFill;
+            cell.border = thinBorder;
+            cell.alignment = { horizontal: aligns[ci], vertical: 'middle' };
+            if (fmts[ci]) cell.numFmt = fmts[ci];
+        });
     }
 
     // Totals row
-    pianoRows.push([]);
-    pianoRows.push([
-        'TOTALE', '',
-        Math.round(sumCap * 100) / 100,
-        Math.round(sumInt * 100) / 100,
-        Math.round(sumTot * 100) / 100,
-        '', ''
-    ]);
-
-    const wsPiano = XLSX.utils.aoa_to_sheet(pianoRows);
-
-    // Column widths
-    wsPiano['!cols'] = [
-        { wch: 5 },   // N°
-        { wch: 14 },  // Scadenza
-        { wch: 16 },  // Quota Capitale
-        { wch: 16 },  // Interessi
-        { wch: 16 },  // Totale Rata
-        { wch: 16 },  // Residuo
-        { wch: 8 },   // Giorni
-    ];
-
-    // Format date and currency cells
-    for (let r = 1; r <= numRate; r++) {
-        const rowIdx = r + 1; // +1 for header
-        const bRef = XLSX.utils.encode_cell({ r: r, c: 1 });
-        if (wsPiano[bRef]) { wsPiano[bRef].z = 'dd/mm/yyyy'; wsPiano[bRef].t = 'd'; }
-        ['C','D','E','F'].forEach(col => {
-            const ref = col + rowIdx;
-            if (wsPiano[ref] && typeof wsPiano[ref].v === 'number') {
-                wsPiano[ref].z = '#,##0.00';
-            }
-        });
-    }
-    // Totals row format
-    const totRow = numRate + 3;
-    ['C','D','E'].forEach(col => {
-        const ref = col + totRow;
-        if (wsPiano[ref] && typeof wsPiano[ref].v === 'number') {
-            wsPiano[ref].z = '#,##0.00';
-        }
+    const totR = numRate + 6;
+    const totRow = ws2.getRow(totR);
+    totRow.height = 26;
+    const totVals = ['TOTALE', '', Math.round(sumCap * 100) / 100, Math.round(sumInt * 100) / 100, Math.round(sumTot * 100) / 100, '', ''];
+    totVals.forEach((v, ci) => {
+        const cell = totRow.getCell(ci + 1);
+        cell.value = v;
+        cell.font = { bold: true, color: { argb: 'FFFFFF' }, size: 11, name: 'Arial' };
+        cell.fill = headerFill;
+        cell.border = thinBorder;
+        cell.alignment = { horizontal: ci >= 2 && ci <= 4 ? 'right' : 'center', vertical: 'middle' };
+        if (ci >= 2 && ci <= 4 && typeof v === 'number') cell.numFmt = eurFmt;
     });
 
-    XLSX.utils.book_append_sheet(wb, wsPiano, 'Piano Ammortamento');
+    // Freeze header
+    ws2.views = [{ state: 'frozen', ySplit: 4 }];
 
     // ================================================================
     // SHEET 3: Dettaglio Cartelle (if available)
     // ================================================================
     if (state.cartelle.length > 0) {
-        const cartHeader = ['N°', 'Numero Documento', 'Ente Creditore', 'Carico Affidato', 'Interessi Mora', 'Importo Residuo', 'Definizione Agevolata', 'Risparmio', 'Risparmio %'];
-        const cartRows = [cartHeader];
-        let stCar = 0, stInt = 0, stRes = 0, stDef = 0;
+        const ws3 = wb.addWorksheet('Dettaglio Cartelle');
+        ws3.columns = [
+            { width: 6 }, { width: 26 }, { width: 32 }, { width: 18 },
+            { width: 16 }, { width: 18 }, { width: 20 }, { width: 16 }, { width: 12 }
+        ];
 
+        // Title
+        ws3.mergeCells('A1:I1');
+        const t3 = ws3.getCell('A1');
+        t3.value = 'DETTAGLIO CARTELLE';
+        t3.font = { bold: true, color: { argb: 'FFFFFF' }, size: 14, name: 'Arial' };
+        t3.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: primaryLight } };
+        t3.alignment = { horizontal: 'center', vertical: 'middle' };
+        ws3.getRow(1).height = 32;
+
+        ws3.mergeCells('A2:I2');
+        const s3 = ws3.getCell('A2');
+        s3.value = 'Estratto dal prospetto informativo di Agenzia delle Entrate-Riscossione';
+        s3.font = { italic: true, size: 9, name: 'Arial', color: { argb: '1E3A5F' } };
+        s3.fill = accentFill;
+        s3.alignment = { horizontal: 'center', vertical: 'middle' };
+        ws3.getRow(2).height = 22;
+
+        // Header
+        const cartHeaders = ['N°', 'Numero Documento', 'Ente Creditore', 'Carico Affidato', 'Int. Mora', 'Importo Residuo', 'Definizione Agev.', 'Risparmio', 'Risp. %'];
+        const chRow = ws3.getRow(4);
+        chRow.height = 26;
+        cartHeaders.forEach((h, ci) => {
+            const cell = chRow.getCell(ci + 1);
+            cell.value = h;
+            cell.font = headerFont;
+            cell.fill = headerFill;
+            cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+            cell.border = thinBorder;
+        });
+
+        let stCar = 0, stInt = 0, stRes = 0, stDef = 0;
         state.cartelle.forEach((c, i) => {
             const risp = (c.importoResiduo || 0) - c.importoDefinizione;
             const rispPerc = c.importoResiduo > 0 ? risp / c.importoResiduo : 0;
@@ -2120,56 +2217,59 @@ function exportExcel() {
             stInt += (c.interessiMora || 0);
             stRes += (c.importoResiduo || 0);
             stDef += c.importoDefinizione;
-            cartRows.push([
-                i + 1,
-                c.numero || '',
-                c.ente || '',
-                c.totaleCarico || 0,
-                c.interessiMora || 0,
-                c.importoResiduo || 0,
-                c.importoDefinizione,
-                Math.max(0, risp),
-                rispPerc
-            ]);
+
+            const r = i + 5;
+            const row = ws3.getRow(r);
+            row.height = 22;
+            const isAlt = i % 2 === 1;
+            const rowFill = isAlt ? lightGrayFill : { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF' } };
+
+            const vals = [i + 1, c.numero || '', c.ente || '', c.totaleCarico || 0, c.interessiMora || 0, c.importoResiduo || 0, c.importoDefinizione, Math.max(0, risp), rispPerc];
+            const fmts = [null, null, null, eurFmt, eurFmt, eurFmt, eurFmt, eurFmt, pctFmt];
+            const aligns = ['center', 'left', 'left', 'right', 'right', 'right', 'right', 'right', 'center'];
+
+            vals.forEach((v, ci) => {
+                const cell = row.getCell(ci + 1);
+                cell.value = v;
+                cell.font = ci === 7 && risp > 0 ? { size: 10, name: 'Arial', color: { argb: successColor }, bold: true } : { size: 10, name: 'Arial' };
+                cell.fill = rowFill;
+                cell.border = thinBorder;
+                cell.alignment = { horizontal: aligns[ci], vertical: 'middle', wrapText: ci <= 2 };
+                if (fmts[ci]) cell.numFmt = fmts[ci];
+            });
         });
 
+        // Totals
+        const ctR = state.cartelle.length + 6;
+        const ctRow = ws3.getRow(ctR);
+        ctRow.height = 26;
         const stRisp = stRes - stDef;
-        cartRows.push([]);
-        cartRows.push([
-            'TOTALE', '', '',
-            stCar, stInt, stRes, stDef,
-            Math.max(0, stRisp),
-            stRes > 0 ? stRisp / stRes : 0
-        ]);
+        const ctVals = ['', 'TOTALE', '', stCar, stInt, stRes, stDef, Math.max(0, stRisp), stRes > 0 ? stRisp / stRes : 0];
+        const ctFmts = [null, null, null, eurFmt, eurFmt, eurFmt, eurFmt, eurFmt, pctFmt];
+        ctVals.forEach((v, ci) => {
+            const cell = ctRow.getCell(ci + 1);
+            cell.value = v;
+            cell.font = { bold: true, color: { argb: 'FFFFFF' }, size: 11, name: 'Arial' };
+            cell.fill = headerFill;
+            cell.border = thinBorder;
+            cell.alignment = { horizontal: ci >= 3 ? 'right' : 'center', vertical: 'middle' };
+            if (ctFmts[ci]) cell.numFmt = ctFmts[ci];
+        });
 
-        const wsCart = XLSX.utils.aoa_to_sheet(cartRows);
-        wsCart['!cols'] = [
-            { wch: 5 }, { wch: 24 }, { wch: 30 },
-            { wch: 16 }, { wch: 14 }, { wch: 16 },
-            { wch: 18 }, { wch: 14 }, { wch: 12 }
-        ];
-
-        // Format currency and percentage cells
-        for (let r = 1; r <= state.cartelle.length + 2; r++) {
-            ['D','E','F','G','H'].forEach(col => {
-                const ref = col + (r + 1);
-                if (wsCart[ref] && typeof wsCart[ref].v === 'number') {
-                    wsCart[ref].z = '#,##0.00';
-                }
-            });
-            const iRef = 'I' + (r + 1);
-            if (wsCart[iRef] && typeof wsCart[iRef].v === 'number') {
-                wsCart[iRef].z = '0.0%';
-            }
-        }
-
-        XLSX.utils.book_append_sheet(wb, wsCart, 'Dettaglio Cartelle');
+        ws3.views = [{ state: 'frozen', ySplit: 4 }];
     }
 
     // ================================================================
     // DOWNLOAD
     // ================================================================
-    XLSX.writeFile(wb, 'rottamazione_quinquies_piano.xlsx');
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'rottamazione_quinquies_piano.xlsx';
+    a.click();
+    URL.revokeObjectURL(url);
 }
 
 // ============================================================
