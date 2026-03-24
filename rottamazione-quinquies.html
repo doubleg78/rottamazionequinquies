@@ -1,0 +1,2528 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulatore Rottamazione Quinquies 2026</title>
+    <style>
+        :root {
+            --primary: #1a365d;
+            --primary-light: #2a5298;
+            --accent: #e8a838;
+            --accent-hover: #d4952e;
+            --bg: #f0f4f8;
+            --card: #ffffff;
+            --text: #2d3748;
+            --text-light: #718096;
+            --border: #e2e8f0;
+            --success: #38a169;
+            --danger: #e53e3e;
+            --info: #3182ce;
+            --warning: #dd6b20;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: white;
+            padding: 2rem 1rem;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 0.3rem;
+        }
+
+        .header .subtitle {
+            font-size: 0.95rem;
+            opacity: 0.85;
+            font-weight: 300;
+        }
+
+        .header .law-ref {
+            font-size: 0.8rem;
+            opacity: 0.65;
+            margin-top: 0.3rem;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 1.5rem 1rem;
+        }
+
+        .info-banner {
+            background: linear-gradient(135deg, #ebf8ff, #e6fffa);
+            border-left: 4px solid var(--info);
+            border-radius: 8px;
+            padding: 1rem 1.2rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.88rem;
+        }
+
+        .info-banner strong { color: var(--primary); }
+
+        /* tabs removed - using sections now */
+
+        .section-panel {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin-bottom: 1rem;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            margin-bottom: 1rem;
+            cursor: pointer;
+            user-select: none;
+        }
+        .section-header h3 {
+            margin: 0;
+            font-size: 1rem;
+            color: var(--primary-dark);
+        }
+        .section-header .section-icon {
+            font-size: 1.1rem;
+        }
+        .section-header .toggle-arrow {
+            margin-left: auto;
+            font-size: 0.7rem;
+            color: var(--text-light);
+            transition: transform 0.3s;
+        }
+        .section-header .toggle-arrow.collapsed {
+            transform: rotate(-90deg);
+        }
+        .section-body.collapsed {
+            display: none;
+        }
+
+        .two-col-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .upload-inline {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            padding: 0.8rem 1rem;
+            border: 2px dashed var(--border);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: var(--bg);
+        }
+        .upload-inline:hover {
+            border-color: var(--primary-light);
+            background: #eff6ff;
+        }
+        .upload-inline .upload-icon {
+            font-size: 1.5rem;
+        }
+        .upload-inline .upload-text {
+            font-size: 0.85rem;
+            color: var(--text-light);
+        }
+        .upload-inline .upload-text strong {
+            color: var(--primary);
+        }
+
+        .form-group {
+            margin-bottom: 1.2rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.4rem;
+            font-size: 0.9rem;
+            color: var(--primary);
+        }
+
+        .form-group .hint {
+            font-size: 0.78rem;
+            color: var(--text-light);
+            margin-bottom: 0.3rem;
+        }
+
+        input[type="text"], input[type="number"], input[type="file"], select {
+            width: 100%;
+            padding: 0.7rem 1rem;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: border-color 0.2s;
+            background: #fafbfc;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary-light);
+            background: white;
+        }
+
+        .input-euro {
+            position: relative;
+        }
+
+        .input-euro::after {
+            content: '€';
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-light);
+            font-weight: 600;
+        }
+
+        .input-euro input {
+            padding-right: 2.5rem;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.8rem 1.8rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(26,54,93,0.3);
+        }
+
+        .btn-accent {
+            background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+            color: white;
+        }
+
+        .btn-accent:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(232,168,56,0.3);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--border);
+            color: var(--text);
+        }
+
+        .btn-outline:hover {
+            border-color: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-sm {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.82rem;
+        }
+
+        .actions-row {
+            display: flex;
+            gap: 0.8rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        /* Cartelle detail section */
+        .cartella-card {
+            background: #f7fafc;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1.2rem;
+            margin-bottom: 1rem;
+            position: relative;
+        }
+
+        .cartella-card .cartella-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.8rem;
+        }
+
+        .cartella-card h4 {
+            color: var(--primary);
+            font-size: 0.95rem;
+        }
+
+        .cartella-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.8rem;
+        }
+
+        @media (max-width: 600px) {
+            .cartella-grid { grid-template-columns: 1fr; }
+        }
+
+        .remove-cartella {
+            background: none;
+            border: none;
+            color: var(--danger);
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        .remove-cartella:hover { background: #fff5f5; }
+
+        /* Results */
+        .results-section {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin-bottom: 1.5rem;
+            display: none;
+        }
+
+        .results-section.visible { display: block; }
+
+        .results-section h2 {
+            color: var(--primary);
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .summary-card {
+            background: linear-gradient(135deg, #f7fafc, #edf2f7);
+            border-radius: 10px;
+            padding: 1.2rem;
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+
+        .summary-card.highlight {
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            color: white;
+            border: none;
+        }
+
+        .summary-card .label {
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            opacity: 0.75;
+            margin-bottom: 0.3rem;
+        }
+
+        .summary-card .value {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .summary-card .sub {
+            font-size: 0.78rem;
+            opacity: 0.65;
+            margin-top: 0.2rem;
+        }
+
+        /* Payment schedule table */
+        .schedule-wrapper {
+            overflow-x: auto;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+        }
+
+        .schedule-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.88rem;
+        }
+
+        .schedule-table thead {
+            background: var(--primary);
+            color: white;
+        }
+
+        .schedule-table th {
+            padding: 0.8rem 0.6rem;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+        }
+
+        .schedule-table td {
+            padding: 0.65rem 0.6rem;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .schedule-table tbody tr:hover { background: #f7fafc; }
+
+        .schedule-table tbody tr:nth-child(even) { background: #fafbfc; }
+        .schedule-table tbody tr:nth-child(even):hover { background: #f0f4f8; }
+
+        .schedule-table .year-separator td {
+            background: #edf2f7;
+            font-weight: 700;
+            color: var(--primary);
+            font-size: 0.82rem;
+            padding: 0.5rem 0.6rem;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.15rem 0.5rem;
+            border-radius: 20px;
+            font-size: 0.72rem;
+            font-weight: 600;
+        }
+
+        .badge-green { background: #c6f6d5; color: #276749; }
+        .badge-blue { background: #bee3f8; color: #2a4365; }
+        .badge-orange { background: #feebc8; color: #9c4221; }
+
+        .amount { font-family: 'Courier New', monospace; font-weight: 600; }
+        .amount-interest { color: var(--warning); }
+
+        /* PDF Upload zone */
+        .upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 1rem;
+            background: #fafbfc;
+        }
+
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: var(--primary-light);
+            background: #ebf8ff;
+        }
+
+        .upload-zone .icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-zone p { color: var(--text-light); font-size: 0.9rem; }
+
+        .upload-zone .supported { font-size: 0.78rem; color: #a0aec0; margin-top: 0.3rem; }
+
+        .pdf-status {
+            padding: 0.8rem 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: none;
+            font-size: 0.88rem;
+        }
+
+        .pdf-status.success { display: block; background: #f0fff4; border: 1px solid #c6f6d5; color: #276749; }
+        .pdf-status.error { display: block; background: #fff5f5; border: 1px solid #fed7d7; color: #9b2c2c; }
+        .pdf-status.loading { display: block; background: #ebf8ff; border: 1px solid #bee3f8; color: #2a4365; }
+
+        /* Number of installments selector */
+        .installments-selector {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-top: 0.4rem;
+        }
+
+        .installments-option {
+            padding: 0.5rem 1rem;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.88rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            background: white;
+        }
+
+        .installments-option:hover { border-color: var(--primary-light); }
+
+        .installments-option.selected {
+            border-color: var(--primary);
+            background: var(--primary);
+            color: white;
+        }
+
+        /* Responsive improvements */
+        @media (max-width: 768px) {
+            .header h1 { font-size: 1.3rem; }
+            .container { padding: 1rem 0.6rem; }
+            .two-col-row { grid-template-columns: 1fr; }
+            .summary-cards { grid-template-columns: 1fr 1fr; }
+            .schedule-table { font-size: 0.78rem; }
+        }
+
+        /* Print styles */
+        @media print {
+            .header { padding: 1rem; }
+            .section-panel, .info-banner, .actions-row { display: none !important; }
+            .results-section { display: block !important; box-shadow: none; }
+            .schedule-table { font-size: 0.75rem; }
+        }
+
+        /* Disclaimer */
+        .disclaimer {
+            background: #fffbeb;
+            border: 1px solid #fef3c7;
+            border-radius: 8px;
+            padding: 0.8rem 1rem;
+            margin-top: 1.5rem;
+            font-size: 0.78rem;
+            color: #92400e;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 1.5rem;
+            color: var(--text-light);
+            font-size: 0.78rem;
+        }
+
+        /* Cartelle loaded from PDF */
+        .cartelle-list { margin-top: 1rem; }
+
+        .pdf-cartella-item {
+            background: #f7fafc;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.8rem 1rem;
+            margin-bottom: 0.5rem;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 0.5rem;
+            align-items: center;
+            font-size: 0.85rem;
+        }
+
+        .pdf-cartella-item .details { color: var(--text-light); font-size: 0.78rem; }
+        .pdf-cartella-item .amount-val { font-weight: 700; color: var(--primary); font-size: 1rem; }
+
+        .totals-bar {
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            color: white;
+            border-radius: 10px;
+            padding: 1rem 1.2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .totals-bar .total-item { text-align: center; }
+        .totals-bar .total-label { font-size: 0.72rem; opacity: 0.75; text-transform: uppercase; }
+        .totals-bar .total-value { font-size: 1.2rem; font-weight: 700; }
+
+        .hidden { display: none !important; }
+
+        /* Chart */
+        .chart-container {
+            max-width: 600px;
+            margin: 1.5rem auto;
+        }
+
+        .bar-chart {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 2rem;
+            height: 200px;
+            padding: 1rem 0;
+        }
+
+        .bar-group { text-align: center; flex: 1; max-width: 180px; }
+
+        .bar {
+            border-radius: 8px 8px 0 0;
+            margin: 0 auto;
+            width: 80px;
+            transition: height 0.6s ease;
+            position: relative;
+        }
+
+        .bar .bar-label {
+            position: absolute;
+            top: -1.8rem;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.82rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .bar-caption {
+            margin-top: 0.5rem;
+            font-size: 0.8rem;
+            color: var(--text-light);
+            font-weight: 600;
+        }
+
+        .bar-original { background: linear-gradient(180deg, #fc8181, #e53e3e); }
+        .bar-rottamazione { background: linear-gradient(180deg, #68d391, #38a169); }
+        .bar-savings { background: linear-gradient(180deg, #63b3ed, #3182ce); }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            margin-top: 0.5rem;
+            font-size: 0.78rem;
+        }
+
+        .legend-item { display: flex; align-items: center; gap: 0.3rem; }
+        .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>Simulatore Rottamazione Quinquies</h1>
+    <div class="subtitle">Calcola il piano di rateazione della Definizione Agevolata 2026</div>
+    <div class="law-ref">Legge n. 199/2025 - Art. 1, commi 82-93 (Legge di Bilancio 2026)</div>
+</div>
+
+<div class="container">
+
+    <div class="info-banner">
+        <strong>Come funziona:</strong> La Rottamazione Quinquies permette di pagare solo il <strong>capitale</strong>, i <strong>diritti di notifica</strong> e le <strong>spese per procedure esecutive</strong>, eliminando sanzioni, interessi di mora e aggio. Il pagamento può avvenire in <strong>unica soluzione</strong> entro il 31/07/2026 oppure in un massimo di <strong>54 rate bimestrali</strong> con interessi di dilazione al <strong>3% annuo</strong> dal 1° agosto 2026.
+    </div>
+
+    <!-- SECTION 1: Importi + PDF upload -->
+    <div class="section-panel">
+        <div class="section-header" onclick="toggleSection('importi')">
+            <span class="section-icon">&#128176;</span>
+            <h3>Importi e caricamento dati</h3>
+            <span class="toggle-arrow" id="arrow-importi">&#9660;</span>
+        </div>
+        <div class="section-body" id="body-importi">
+            <!-- PDF upload inline -->
+            <div class="form-group">
+                <label>Carica prospetto informativo (PDF)</label>
+                <div class="upload-inline" id="upload-zone" onclick="document.getElementById('pdf-input').click()">
+                    <span class="upload-icon">&#128196;</span>
+                    <div class="upload-text"><strong>Trascina qui o clicca</strong> per caricare il PDF di Agenzia delle Entrate-Riscossione</div>
+                    <input type="file" id="pdf-input" accept=".pdf" style="display:none" onchange="handlePdfUpload(event)">
+                </div>
+                <div class="pdf-status" id="pdf-status" style="margin-top:0.5rem"></div>
+                <div id="pdf-cartelle-list" class="cartelle-list hidden" style="margin-top:0.8rem"></div>
+            </div>
+
+            <div class="hint" style="margin-bottom:0.8rem; font-style:italic">Oppure inserisci gli importi manualmente:</div>
+
+            <!-- Two-column importi -->
+            <div class="two-col-row">
+                <div class="form-group" style="margin-bottom:0">
+                    <label>Importo definizione agevolata</label>
+                    <div class="hint">Somma di capitale + diritti di notifica + spese procedura</div>
+                    <div class="input-euro">
+                        <input type="text" id="importo-totale" placeholder="Es: 12.500,00" oninput="formatEuro(this)">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom:0">
+                    <label>Importo originario complessivo <span style="font-weight:400; color:var(--text-light)">(opzionale)</span></label>
+                    <div class="hint">Per calcolare il risparmio rispetto all'importo originario</div>
+                    <div class="input-euro">
+                        <input type="text" id="importo-originario" placeholder="Es: 25.000,00" oninput="formatEuro(this)">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECTION 2: Dettaglio Cartelle (collapsible) -->
+    <div class="section-panel">
+        <div class="section-header" onclick="toggleSection('cartelle')">
+            <span class="section-icon">&#128203;</span>
+            <h3>Dettaglio Cartelle</h3>
+            <span class="toggle-arrow collapsed" id="arrow-cartelle">&#9660;</span>
+        </div>
+        <div class="section-body collapsed" id="body-cartelle">
+            <p style="font-size:0.85rem; color:var(--text-light); margin-bottom:1rem">Caricando un PDF i dati vengono compilati automaticamente, oppure aggiungi cartelle manualmente.</p>
+
+            <!-- Summary table for loaded cartelle -->
+            <div id="cartelle-table-wrapper" class="hidden">
+                <div class="schedule-wrapper" style="margin-bottom:1rem">
+                    <table class="schedule-table" id="cartelle-detail-table">
+                        <thead>
+                            <tr>
+                                <th>N°</th>
+                                <th>Numero Documento</th>
+                                <th>Ente Creditore</th>
+                                <th>Carico Affidato</th>
+                                <th>Int. Mora</th>
+                                <th>Importo Residuo</th>
+                                <th>Definizione Agevolata</th>
+                                <th>Risparmio</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="cartelle-detail-body"></tbody>
+                        <tfoot id="cartelle-detail-foot"></tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Manual input row -->
+            <div class="cartella-card" id="manual-add-card">
+                <div class="cartella-header">
+                    <h4>Aggiungi cartella manualmente</h4>
+                </div>
+                <div class="cartella-grid" style="grid-template-columns: repeat(3, 1fr)">
+                    <div class="form-group">
+                        <label>Numero documento</label>
+                        <input type="text" id="add-numdoc" placeholder="Es: 00820230012850025000">
+                    </div>
+                    <div class="form-group">
+                        <label>Ente creditore</label>
+                        <input type="text" id="add-ente" placeholder="Es: Agenzia delle Entrate">
+                    </div>
+                    <div class="form-group">
+                        <label>Carico affidato</label>
+                        <div class="input-euro">
+                            <input type="text" id="add-carico" placeholder="0,00" oninput="formatEuro(this)">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Interessi di mora</label>
+                        <div class="input-euro">
+                            <input type="text" id="add-intmora" placeholder="0,00" oninput="formatEuro(this)">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Importo residuo</label>
+                        <div class="input-euro">
+                            <input type="text" id="add-residuo" placeholder="0,00" oninput="formatEuro(this)">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Importo definizione agevolata</label>
+                        <div class="input-euro">
+                            <input type="text" id="add-definizione" placeholder="0,00" oninput="formatEuro(this)">
+                        </div>
+                    </div>
+                </div>
+                <div class="actions-row">
+                    <button class="btn btn-primary btn-sm" onclick="addCartellaManual()">+ Aggiungi alla tabella</button>
+                    <button class="btn btn-outline btn-sm" onclick="clearManualInputs()">Pulisci campi</button>
+                </div>
+            </div>
+
+            <div class="totals-bar hidden" id="cartelle-totals">
+                <div class="total-item">
+                    <div class="total-label">Totale Definizione Agevolata</div>
+                    <div class="total-value" id="total-definizione">0,00 &euro;</div>
+                </div>
+                <div class="total-item">
+                    <div class="total-label">Importo Residuo Totale</div>
+                    <div class="total-value" id="total-originario">0,00 &euro;</div>
+                </div>
+                <div class="total-item">
+                    <div class="total-label">Risparmio</div>
+                    <div class="total-value" id="total-risparmio">0,00 &euro;</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Installments selector (shared) -->
+    <div style="background:var(--card); border-radius:12px; padding:1.5rem; box-shadow:0 4px 15px rgba(0,0,0,0.05); margin-bottom:1.5rem;">
+        <div class="form-group">
+            <label>Modalità di pagamento</label>
+            <div class="installments-selector" id="installments-selector">
+                <div class="installments-option" data-value="1" onclick="selectInstallments(1)">Unica soluzione</div>
+                <div class="installments-option" data-value="6" onclick="selectInstallments(6)">6 rate</div>
+                <div class="installments-option" data-value="12" onclick="selectInstallments(12)">12 rate</div>
+                <div class="installments-option" data-value="18" onclick="selectInstallments(18)">18 rate</div>
+                <div class="installments-option" data-value="24" onclick="selectInstallments(24)">24 rate</div>
+                <div class="installments-option" data-value="36" onclick="selectInstallments(36)">36 rate</div>
+                <div class="installments-option selected" data-value="54" onclick="selectInstallments(54)">54 rate (max)</div>
+                <div class="installments-option installments-custom" data-value="custom" onclick="toggleCustomRate()">
+                    Personalizzato
+                    <select id="custom-rate-select" onclick="event.stopPropagation()" onchange="selectCustomRate(this.value)" style="display:none; margin-left:6px; padding:2px 4px; border-radius:6px; border:1px solid var(--border); font-size:0.85rem; font-weight:600; color:var(--primary); background:#fff; cursor:pointer;">
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="actions-row">
+            <button class="btn btn-primary" onclick="calculate()">Calcola Piano di Rateazione</button>
+            <button class="btn btn-outline" onclick="resetAll()">Resetta</button>
+            <button class="btn btn-accent" onclick="exportExcel()" id="btn-export" style="display:none">&#128202; Esporta Excel</button>
+            <button class="btn btn-primary" onclick="exportPDF()" id="btn-export-pdf" style="display:none">&#128196; Esporta PDF</button>
+        </div>
+    </div>
+
+    <!-- RESULTS -->
+    <div class="results-section" id="results-section">
+        <h2>Riepilogo Piano di Pagamento</h2>
+
+        <div class="summary-cards" id="summary-cards"></div>
+
+        <div class="chart-container" id="chart-container" style="display:none">
+            <div class="bar-chart" id="bar-chart"></div>
+            <div class="legend">
+                <div class="legend-item"><div class="legend-dot" style="background:#e53e3e"></div> Importo originario</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#38a169"></div> Da pagare</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#3182ce"></div> Risparmio</div>
+            </div>
+        </div>
+
+        <h3 style="margin: 1.5rem 0 0.8rem; color:var(--primary); font-size:1.1rem;">Dettaglio Scadenze</h3>
+
+        <div class="schedule-wrapper">
+            <table class="schedule-table" id="schedule-table">
+                <thead>
+                    <tr>
+                        <th>N°</th>
+                        <th>Scadenza</th>
+                        <th>Quota Capitale</th>
+                        <th>Interessi (3%)</th>
+                        <th>Totale Rata</th>
+                        <th>Residuo</th>
+                    </tr>
+                </thead>
+                <tbody id="schedule-body"></tbody>
+            </table>
+        </div>
+
+        <div id="totals-row" style="display:flex; justify-content:flex-end; gap:2rem; padding:0.8rem 1rem; background:#f7fafc; border-radius:0 0 8px 8px; font-weight:700; font-size:0.88rem; border:1px solid var(--border); border-top:none;"></div>
+    </div>
+
+    <div class="disclaimer">
+        <strong>Avvertenza:</strong> Questo simulatore è fornito a scopo puramente informativo e non costituisce consulenza fiscale o legale. I calcoli sono basati sulle disposizioni della Legge n. 199/2025 e potrebbero non riflettere eventuali variazioni normative successive. Gli interessi di dilazione sono calcolati al tasso del 3% annuo a decorrere dal 1° agosto 2026 (L. 199/2025, art. 1, comma 83). Per informazioni ufficiali, consultare il sito dell'Agenzia delle Entrate-Riscossione.
+    </div>
+</div>
+
+<div class="footer">
+    Made with &#10084;&#65039; by Giacomo Greci<br>
+    <span style="opacity:0.6; font-size:0.72rem">Distribuito con licenza <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener" style="color:inherit; text-decoration:underline">GNU GPL v3</a> &mdash; Simulatore non ufficiale basato sulla Legge n. 199/2025</span>
+</div>
+
+<!-- PDF.js for parsing -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script>
+    if (typeof pdfjsLib !== 'undefined') {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+</script>
+
+<script>
+// ============================================================
+// CONSTANTS & STATE
+// ============================================================
+
+const INTEREST_RATE = 0.03; // 3% annuo (L. 199/2025, art. 1, comma 83)
+const INTEREST_START = new Date(2026, 7, 1); // 1 agosto 2026
+
+let state = {
+    numRate: 54,
+    importoTotale: 0,
+    importoOriginario: 0,
+    cartelle: [],
+    activeTab: 'simple'
+};
+
+// Payment schedule dates based on L. 199/2025
+function generateScheduleDates(numRate) {
+    const dates = [];
+    // Rate 1-3: 31/07/2026, 30/09/2026, 30/11/2026
+    if (numRate >= 1) dates.push(new Date(2026, 6, 31)); // Jul 31
+    if (numRate >= 2) dates.push(new Date(2026, 8, 30)); // Sep 30
+    if (numRate >= 3) dates.push(new Date(2026, 10, 30)); // Nov 30
+
+    if (numRate <= 3) return dates.slice(0, numRate);
+
+    // Rate 4-51: 6 rate/anno dal 2027 (gen, mar, mag, lug, set, nov)
+    const bimonthlyMonths = [0, 2, 4, 6, 8, 10]; // Jan, Mar, May, Jul, Sep, Nov
+    const bimonthlyDays   = [31, 31, 31, 31, 30, 30];
+
+    let year = 2027;
+    let rataNum = 4;
+
+    while (rataNum <= Math.min(numRate, 51)) {
+        for (let i = 0; i < bimonthlyMonths.length && rataNum <= Math.min(numRate, 51); i++) {
+            dates.push(new Date(year, bimonthlyMonths[i], bimonthlyDays[i]));
+            rataNum++;
+        }
+        year++;
+    }
+
+    // Rate 52-54: Jan 31 2035, Mar 31 2035, May 31 2035
+    if (numRate >= 52) dates.push(new Date(2035, 0, 31));
+    if (numRate >= 53) dates.push(new Date(2035, 2, 31));
+    if (numRate >= 54) dates.push(new Date(2035, 4, 31));
+
+    return dates.slice(0, numRate);
+}
+
+// ============================================================
+// FORMATTING UTILITIES
+// ============================================================
+
+function formatEuro(input) {
+    let val = input.value.replace(/[^\d.,]/g, '');
+    // Allow Italian format with dots as thousands separators and comma for decimals
+    input.value = val;
+}
+
+function parseEuro(str) {
+    if (!str) return 0;
+    // Handle Italian format: 12.500,00 -> 12500.00
+    let clean = str.replace(/\./g, '').replace(',', '.');
+    return parseFloat(clean) || 0;
+}
+
+function formatNumber(num) {
+    // Robust Italian-style number formatting: 1.234,56
+    const fixed = Math.abs(num).toFixed(2);
+    const parts = fixed.split('.');
+    const intPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return (num < 0 ? '-' : '') + intPart + ',' + parts[1];
+}
+
+function toEuro(num) {
+    return formatNumber(num) + ' \u20ac';
+}
+
+function toEuroCompact(num) {
+    return formatNumber(num);
+}
+
+function formatDate(date) {
+    return date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function formatDateLong(date) {
+    return date.toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+// ============================================================
+// TAB MANAGEMENT
+// ============================================================
+
+function toggleSection(name) {
+    const body = document.getElementById('body-' + name);
+    const arrow = document.getElementById('arrow-' + name);
+    body.classList.toggle('collapsed');
+    arrow.classList.toggle('collapsed');
+}
+
+function expandSection(name) {
+    const body = document.getElementById('body-' + name);
+    const arrow = document.getElementById('arrow-' + name);
+    body.classList.remove('collapsed');
+    arrow.classList.remove('collapsed');
+}
+
+// ============================================================
+// CARTELLE MANAGEMENT (table-based)
+// ============================================================
+
+// state.cartelle holds all cartella objects
+
+function addCartellaManual() {
+    const numdoc = document.getElementById('add-numdoc').value.trim();
+    const ente = document.getElementById('add-ente').value.trim();
+    const carico = parseEuro(document.getElementById('add-carico').value);
+    const intmora = parseEuro(document.getElementById('add-intmora').value);
+    const residuo = parseEuro(document.getElementById('add-residuo').value);
+    const definizione = parseEuro(document.getElementById('add-definizione').value);
+
+    if (definizione <= 0) {
+        alert('Inserisci almeno l\'importo della definizione agevolata.');
+        return;
+    }
+
+    state.cartelle.push({
+        numero: numdoc || `Cartella ${state.cartelle.length + 1}`,
+        ente: ente,
+        totaleCarico: carico,
+        caricoAttuale: 0,
+        interessiMora: intmora,
+        oneriRiscossione: 0,
+        importoResiduo: residuo || definizione,
+        caricoDefinizione: definizione,
+        interessiMoraDef: 0,
+        oneriRiscossioneDef: 0,
+        importoDefinizione: definizione
+    });
+
+    clearManualInputs();
+    renderCartelleTable();
+}
+
+function clearManualInputs() {
+    ['add-numdoc', 'add-ente', 'add-carico', 'add-intmora', 'add-residuo', 'add-definizione'].forEach(id => {
+        document.getElementById(id).value = '';
+    });
+}
+
+function removeCartellaByIndex(idx) {
+    state.cartelle.splice(idx, 1);
+    renderCartelleTable();
+}
+
+function renderCartelleTable() {
+    const wrapper = document.getElementById('cartelle-table-wrapper');
+    const tbody = document.getElementById('cartelle-detail-body');
+    const tfoot = document.getElementById('cartelle-detail-foot');
+    const totalsBar = document.getElementById('cartelle-totals');
+
+    if (state.cartelle.length === 0) {
+        wrapper.classList.add('hidden');
+        totalsBar.classList.add('hidden');
+        state.importoTotale = 0;
+        state.importoOriginario = 0;
+        return;
+    }
+
+    wrapper.classList.remove('hidden');
+    totalsBar.classList.remove('hidden');
+
+    let html = '';
+    let sumCarico = 0, sumIntMora = 0, sumResiduo = 0, sumDef = 0, sumRisparmio = 0;
+
+    state.cartelle.forEach((c, i) => {
+        const risparmio = c.importoResiduo - c.importoDefinizione;
+        sumCarico += (c.totaleCarico || 0);
+        sumIntMora += (c.interessiMora || 0);
+        sumResiduo += (c.importoResiduo || 0);
+        sumDef += c.importoDefinizione;
+        sumRisparmio += Math.max(0, risparmio);
+
+        html += `<tr>
+            <td><strong>${i + 1}</strong></td>
+            <td style="font-family:monospace; font-size:0.8rem">${c.numero || '—'}</td>
+            <td style="font-size:0.82rem; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="${c.ente || ''}">${c.ente || '—'}</td>
+            <td class="amount">${c.totaleCarico ? toEuroCompact(c.totaleCarico) : '—'}</td>
+            <td class="amount" style="color:${c.interessiMora > 0 ? 'var(--danger)' : 'inherit'}">${c.interessiMora ? toEuroCompact(c.interessiMora) : '—'}</td>
+            <td class="amount"><strong>${c.importoResiduo ? toEuroCompact(c.importoResiduo) : '—'}</strong></td>
+            <td class="amount" style="color:var(--primary); font-weight:700">${toEuroCompact(c.importoDefinizione)}</td>
+            <td class="amount" style="color:var(--success); font-weight:600">${risparmio > 0 ? toEuroCompact(risparmio) : '—'}</td>
+            <td><button class="remove-cartella" onclick="removeCartellaByIndex(${i})" title="Rimuovi">&times;</button></td>
+        </tr>`;
+    });
+
+    tbody.innerHTML = html;
+
+    const percRisparmio = sumResiduo > 0 ? ((sumRisparmio / sumResiduo) * 100).toFixed(1) : 0;
+    tfoot.innerHTML = `<tr style="background:var(--primary); color:white; font-weight:700">
+        <td colspan="3" style="padding:0.7rem">TOTALE (${state.cartelle.length} cartell${state.cartelle.length === 1 ? 'a' : 'e'})</td>
+        <td class="amount">${sumCarico > 0 ? toEuroCompact(sumCarico) : '—'}</td>
+        <td class="amount">${sumIntMora > 0 ? toEuroCompact(sumIntMora) : '—'}</td>
+        <td class="amount">${sumResiduo > 0 ? toEuroCompact(sumResiduo) : '—'}</td>
+        <td class="amount" style="font-size:1rem">${toEuroCompact(sumDef)}</td>
+        <td class="amount" style="color:#68d391">${sumRisparmio > 0 ? toEuroCompact(sumRisparmio) + ' (' + percRisparmio + '%)' : '—'}</td>
+        <td></td>
+    </tr>`;
+
+    // Update totals bar
+    document.getElementById('total-definizione').textContent = toEuro(sumDef);
+    document.getElementById('total-originario').textContent = sumResiduo > 0 ? toEuro(sumResiduo) : '—';
+    document.getElementById('total-risparmio').textContent = sumRisparmio > 0 ? toEuro(sumRisparmio) : '—';
+
+    // Update state for calculation
+    state.importoTotale = sumDef;
+    state.importoOriginario = sumResiduo;
+
+    // Also update the simple tab
+    document.getElementById('importo-totale').value = toEuroCompact(sumDef);
+    if (sumResiduo > 0) {
+        document.getElementById('importo-originario').value = toEuroCompact(sumResiduo);
+    }
+}
+
+// ============================================================
+// INSTALLMENTS SELECTOR
+// ============================================================
+
+function selectInstallments(num) {
+    state.numRate = num;
+    document.querySelectorAll('.installments-option').forEach(opt => {
+        opt.classList.toggle('selected', parseInt(opt.dataset.value) === num);
+    });
+    // Deselect custom if a preset was clicked
+    const customEl = document.querySelector('.installments-custom');
+    if (customEl && ![1,6,12,18,24,36,54].includes(num)) {
+        // Custom is active
+        document.querySelectorAll('.installments-option').forEach(opt => opt.classList.remove('selected'));
+        customEl.classList.add('selected');
+    } else {
+        document.getElementById('custom-rate-select').style.display = 'none';
+    }
+}
+
+function toggleCustomRate() {
+    const sel = document.getElementById('custom-rate-select');
+    const customEl = document.querySelector('.installments-custom');
+    // Populate dropdown if empty
+    if (sel.options.length === 0) {
+        for (let i = 2; i <= 54; i++) {
+            const opt = document.createElement('option');
+            opt.value = i;
+            opt.textContent = i + ' rate';
+            sel.appendChild(opt);
+        }
+    }
+    sel.style.display = 'inline-block';
+    sel.value = state.numRate >= 2 && state.numRate <= 54 ? state.numRate : 18;
+    // Select this option visually
+    document.querySelectorAll('.installments-option').forEach(opt => opt.classList.remove('selected'));
+    customEl.classList.add('selected');
+    selectCustomRate(sel.value);
+}
+
+function selectCustomRate(val) {
+    const num = parseInt(val);
+    if (num >= 2 && num <= 54) {
+        state.numRate = num;
+        // Keep custom selected, deselect presets
+        document.querySelectorAll('.installments-option').forEach(opt => opt.classList.remove('selected'));
+        document.querySelector('.installments-custom').classList.add('selected');
+    }
+}
+
+// ============================================================
+// PDF PARSING
+// ============================================================
+
+async function handlePdfUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const statusEl = document.getElementById('pdf-status');
+    statusEl.className = 'pdf-status loading';
+    statusEl.textContent = 'Analisi del PDF in corso...';
+    statusEl.style.display = 'block';
+
+    try {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+        // Extract text items with spatial coordinates for accurate table parsing
+        let allItems = [];
+        for (let p = 1; p <= pdf.numPages; p++) {
+            const page = await pdf.getPage(p);
+            const content = await page.getTextContent();
+            content.items.forEach(item => {
+                if (item.str.trim()) {
+                    allItems.push({
+                        text: item.str.trim(),
+                        x: Math.round(item.transform[4]),
+                        y: Math.round(item.transform[5]),
+                        page: p
+                    });
+                }
+            });
+        }
+
+        const parsed = parsePdfSpatial(allItems);
+
+        if (parsed.cartelle.length > 0) {
+            statusEl.className = 'pdf-status success';
+            statusEl.innerHTML = `<strong>PDF analizzato con successo!</strong> Trovate <strong>${parsed.cartelle.length}</strong> cartelle/avvisi. Totale definizione agevolata: <strong>${toEuro(parsed.totaleDefinizione)}</strong>`;
+            displayPdfCartelle(parsed);
+        } else {
+            // Fallback: try simple text approach
+            let fullText = '';
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const content = await page.getTextContent();
+                fullText += content.items.map(item => item.str).join(' ') + '\n';
+            }
+            const parsed2 = parsePdfTextFallback(fullText);
+            if (parsed2.cartelle.length > 0) {
+                statusEl.className = 'pdf-status success';
+                statusEl.innerHTML = `<strong>PDF analizzato!</strong> Trovate <strong>${parsed2.cartelle.length}</strong> voci. Totale: <strong>${toEuro(parsed2.totaleDefinizione)}</strong>`;
+                displayPdfCartelle(parsed2);
+            } else {
+                statusEl.className = 'pdf-status error';
+                statusEl.innerHTML = 'Non è stato possibile estrarre dati dal PDF. Verifica che sia un prospetto informativo di Agenzia delle Entrate-Riscossione.<br><small>Puoi comunque inserire manualmente gli importi nel tab "Importo Totale" o "Dettaglio Cartelle".</small>';
+            }
+        }
+    } catch (err) {
+        console.error(err);
+        const statusEl = document.getElementById('pdf-status');
+        statusEl.className = 'pdf-status error';
+        statusEl.textContent = 'Errore nella lettura del PDF: ' + err.message;
+    }
+}
+
+// ---- Utility: parse euro amount string ----
+function parseEuroAmount(str) {
+    if (!str) return null;
+    const clean = str.replace(/[€\s]/g, '').replace(/\./g, '').replace(',', '.');
+    const val = parseFloat(clean);
+    return isNaN(val) ? null : val;
+}
+
+// ============================================================
+// SPATIAL PDF PARSER (primary - uses x,y coordinates)
+// ============================================================
+// AdER "Prospetto Informativo" table structure:
+// Columns (left to right):
+// Ambito prov. | Numero documento | Note | Ente | Tot.carico affidato |
+// Carico | Int.mora | Oneri risc. | Importo residuo |
+// Carico(def) | Int.mora(def) | Oneri risc.(def) | TOTALE(def)
+//
+// Each data row has 9 euro amounts. The last row has 2 totals.
+
+function parsePdfSpatial(items) {
+    const result = {
+        cartelle: [],
+        totaleOriginario: 0,      // sum of "Importo residuo" column
+        totaleDefinizione: 0,      // sum of "TOTALE" definizione column
+        totaleCarico: 0            // sum of "Totale carico affidato"
+    };
+
+    // Group items by Y coordinate (same row = similar Y, within 4px tolerance)
+    const rows = [];
+    const sortedItems = [...items].sort((a, b) => {
+        if (a.page !== b.page) return a.page - b.page;
+        // PDF Y is bottom-up, so higher Y = higher on page
+        if (Math.abs(a.y - b.y) > 4) return b.y - a.y; // top to bottom
+        return a.x - b.x; // left to right
+    });
+
+    let currentRow = [];
+    let currentY = null;
+    let currentPage = null;
+
+    for (const item of sortedItems) {
+        if (currentY === null || Math.abs(item.y - currentY) > 4 || item.page !== currentPage) {
+            if (currentRow.length > 0) rows.push([...currentRow]);
+            currentRow = [item];
+            currentY = item.y;
+            currentPage = item.page;
+        } else {
+            currentRow.push(item);
+        }
+    }
+    if (currentRow.length > 0) rows.push(currentRow);
+
+    // Sort items within each row by X
+    rows.forEach(row => row.sort((a, b) => a.x - b.x));
+
+    // Helper: extract euro amounts from a row
+    function extractAmounts(row) {
+        const amounts = [];
+        const amtRegex = /€?\s*(\d{1,3}(?:\.\d{3})*,\d{2})/;
+        // Merge row texts and re-split to handle split amounts
+        const fullRowText = row.map(r => r.text).join(' ');
+        const globalAmtRegex = /€?\s*(\d{1,3}(?:\.\d{3})*,\d{2})/g;
+        let m;
+        while ((m = globalAmtRegex.exec(fullRowText)) !== null) {
+            amounts.push(parseFloat(m[1].replace(/\./g, '').replace(',', '.')));
+        }
+        return amounts;
+    }
+
+    // Helper: extract numero documento (long digit sequence 15-25 chars)
+    function extractNumDoc(row) {
+        const fullText = row.map(r => r.text).join(' ');
+        // Match long number sequences (possibly with spaces): e.g. 00820230012850025000
+        const match = fullText.match(/\b(\d[\d\s]{14,25}\d)\b/);
+        if (match) return match[1].replace(/\s/g, '');
+        return null;
+    }
+
+    // Helper: extract ente using X coordinates
+    // The AdER table column order is: Ambito | NumDoc | Note | Ente | amounts...
+    // The ente column sits between the numero documento / note column and the first € amount.
+    // Strategy: find the X of the numero documento item, find the X of the first € item,
+    // then collect all text items whose X is between those two boundaries (the ente column zone).
+    function extractEnte(row) {
+        // Find the item containing the numero documento (long digit string)
+        let numDocX = -1;
+        let numDocEndX = 0;
+        for (const item of row) {
+            if (/\d{15,25}/.test(item.text.replace(/\s/g, ''))) {
+                numDocX = item.x;
+                // Estimate end of numDoc column: numDoc text width is roughly its char count * 4-5
+                numDocEndX = item.x + item.text.length * 4;
+                break;
+            }
+        }
+
+        // Find the first item containing a € amount
+        let firstAmountX = Infinity;
+        for (const item of row) {
+            if (/€?\s*\d{1,3}(?:\.\d{3})*,\d{2}/.test(item.text)) {
+                if (item.x < firstAmountX) firstAmountX = item.x;
+            }
+        }
+
+        if (numDocX < 0 || firstAmountX === Infinity) {
+            // Fallback: try text-based extraction
+            const fullText = row.map(r => r.text).join(' ');
+            const amtIdx = fullText.search(/€?\s*\d{1,3}(?:\.\d{3})*,\d{2}/);
+            if (amtIdx > 0) {
+                let enteText = fullText.substring(0, amtIdx).trim();
+                enteText = enteText.replace(/\b\d{15,25}\b/g, '').trim();
+                enteText = enteText.replace(/^[\s\-]+/, '').trim();
+                return enteText;
+            }
+            return '';
+        }
+
+        // Collect all text items in the ente column zone:
+        // X must be > numDocX (to skip ambito + numDoc) and < firstAmountX (before amounts)
+        // Use a threshold: items at least 20px right of numDoc start, and before the first amount
+        const enteItems = row.filter(item => {
+            const isNumDoc = /\d{15,25}/.test(item.text.replace(/\s/g, ''));
+            const isAmount = /€?\s*\d{1,3}(?:\.\d{3})*,\d{2}/.test(item.text);
+            const isAmbito = /^(ASCOLI|PICENO|ROMA|MILANO|NAPOLI|TORINO|FIRENZE|BOLOGNA|ANCONA|PERUGIA|BARI|PALERMO|CATANIA|GENOVA|VENEZIA|CAGLIARI|FERMO|MACERATA|PESARO)/i.test(item.text);
+            const isNote = /^[\s\-\(\)]*$/.test(item.text) && item.text.length <= 3;
+            // Keep items that are NOT numDoc, NOT amounts, NOT ambito, NOT note dash
+            // and are positioned in the ente zone
+            return !isNumDoc && !isAmount && !isAmbito && !isNote
+                && item.x > numDocX && item.x < firstAmountX;
+        });
+
+        if (enteItems.length > 0) {
+            // Sort by Y (top to bottom for multi-line ente) then by X
+            enteItems.sort((a, b) => {
+                if (Math.abs(a.y - b.y) > 3) return b.y - a.y; // higher Y = higher on page
+                return a.x - b.x;
+            });
+            let enteText = enteItems.map(item => item.text).join(' ');
+            // Clean up
+            enteText = enteText.replace(/\s+/g, ' ').trim();
+            enteText = enteText.replace(/^[\-\s]+/, '').trim();
+            return enteText;
+        }
+
+        return '';
+    }
+
+    // Process rows: look for data rows (those with 9 amounts = one cartella)
+    // and total rows (those with exactly 2 large amounts at the end)
+    const dataRows = [];
+    const totalCandidates = [];
+
+    // First, try to merge adjacent rows that belong to the same logical table row
+    // (the ente name often spans multiple PDF lines)
+    const mergedRows = [];
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const amounts = extractAmounts(row);
+        const numDoc = extractNumDoc(row);
+
+        if (amounts.length >= 7 || numDoc) {
+            // This row likely starts a data entry
+            // Check if we need to absorb next rows that have NO amounts (continuation of ente text)
+            const merged = [...row];
+            let j = i + 1;
+            while (j < rows.length) {
+                const nextAmounts = extractAmounts(rows[j]);
+                const nextNumDoc = extractNumDoc(rows[j]);
+                if (nextAmounts.length === 0 && !nextNumDoc) {
+                    // Continuation row (probably ente text wrapping)
+                    merged.push(...rows[j]);
+                    j++;
+                } else {
+                    break;
+                }
+            }
+            mergedRows.push(merged);
+            i = j - 1; // Skip absorbed rows
+        } else if (amounts.length >= 1 && amounts.length <= 3) {
+            // Could be a totals row
+            mergedRows.push(row);
+        } else if (amounts.length >= 4) {
+            // Partial data row - could be a split row (amounts on separate line)
+            mergedRows.push(row);
+        }
+        // Skip rows with 0 amounts and no numDoc (headers, labels etc.)
+    }
+
+    // Now also try merging split data rows (where amounts are on a different y-line)
+    const finalRows = [];
+    for (let i = 0; i < mergedRows.length; i++) {
+        const row = mergedRows[i];
+        const amounts = extractAmounts(row);
+        const numDoc = extractNumDoc(row);
+
+        if (numDoc && amounts.length < 9 && i + 1 < mergedRows.length) {
+            // Check if next row has remaining amounts
+            const nextAmounts = extractAmounts(mergedRows[i + 1]);
+            const nextNumDoc = extractNumDoc(mergedRows[i + 1]);
+            if (!nextNumDoc && nextAmounts.length > 0 && amounts.length + nextAmounts.length >= 8) {
+                // Merge
+                finalRows.push([...row, ...mergedRows[i + 1]]);
+                i++; // skip next
+                continue;
+            }
+        }
+        finalRows.push(row);
+    }
+
+    // Parse each final row
+    for (const row of finalRows) {
+        const amounts = extractAmounts(row);
+        const numDoc = extractNumDoc(row);
+
+        if (numDoc && amounts.length >= 8) {
+            // Full data row: 9 amounts per the table structure
+            // [totCarAff, carico, intMora, oneriRisc, impResiduo, caricoDef, intMoraDef, oneriRiscDef, totaleDef]
+            // Sometimes "totale carico affidato" is missing, giving 8 amounts
+            let totCarAff, carico, intMora, oneriRisc, impResiduo, caricoDef, intMoraDef, oneriRiscDef, totaleDef;
+
+            if (amounts.length >= 9) {
+                [totCarAff, carico, intMora, oneriRisc, impResiduo, caricoDef, intMoraDef, oneriRiscDef, totaleDef] = amounts;
+            } else if (amounts.length === 8) {
+                // Missing totCarAff
+                totCarAff = 0;
+                [carico, intMora, oneriRisc, impResiduo, caricoDef, intMoraDef, oneriRiscDef, totaleDef] = amounts;
+            } else {
+                // Take last 4 as definizione, previous as situazione attuale
+                totaleDef = amounts[amounts.length - 1];
+                oneriRiscDef = amounts[amounts.length - 2];
+                intMoraDef = amounts[amounts.length - 3];
+                caricoDef = amounts[amounts.length - 4];
+                impResiduo = amounts.length >= 5 ? amounts[amounts.length - 5] : 0;
+                totCarAff = amounts.length >= 9 ? amounts[0] : 0;
+                carico = amounts.length >= 6 ? amounts[0] : totaleDef;
+                intMora = amounts.length >= 7 ? amounts[1] : 0;
+                oneriRisc = amounts.length >= 8 ? amounts[2] : 0;
+            }
+
+            const ente = extractEnte(row);
+
+            result.cartelle.push({
+                numero: numDoc,
+                ente: ente,
+                totaleCarico: totCarAff,
+                caricoAttuale: carico,
+                interessiMora: intMora,
+                oneriRiscossione: oneriRisc,
+                importoResiduo: impResiduo,
+                caricoDefinizione: caricoDef,
+                interessiMoraDef: intMoraDef,
+                oneriRiscossioneDef: oneriRiscDef,
+                importoDefinizione: totaleDef
+            });
+        } else if (!numDoc && amounts.length >= 1 && amounts.length <= 3) {
+            // Potential totals row
+            totalCandidates.push(amounts);
+        }
+    }
+
+    // Find totals - look for the row with exactly 2 amounts (importo residuo totale + totale definizione)
+    // or use the last candidate
+    for (const tc of totalCandidates) {
+        if (tc.length === 2) {
+            result.totaleOriginario = tc[0]; // Importo residuo totale
+            result.totaleDefinizione = tc[1]; // Totale definizione agevolata
+        }
+    }
+
+    // If no totals found from dedicated row, compute from cartelle
+    if (result.totaleDefinizione === 0 && result.cartelle.length > 0) {
+        result.totaleDefinizione = result.cartelle.reduce((s, c) => s + c.importoDefinizione, 0);
+    }
+    if (result.totaleOriginario === 0 && result.cartelle.length > 0) {
+        result.totaleOriginario = result.cartelle.reduce((s, c) => s + c.importoResiduo, 0);
+    }
+
+    return result;
+}
+
+// ============================================================
+// FALLBACK TEXT PARSER (when spatial parsing fails)
+// ============================================================
+function parsePdfTextFallback(text) {
+    const result = {
+        cartelle: [],
+        totaleOriginario: 0,
+        totaleDefinizione: 0
+    };
+
+    const textNorm = text.replace(/\s+/g, ' ');
+
+    // Find all euro amounts
+    const amountRegex = /€?\s*(\d{1,3}(?:\.\d{3})*,\d{2})/g;
+    const allAmounts = [];
+    let m;
+    while ((m = amountRegex.exec(textNorm)) !== null) {
+        allAmounts.push({
+            value: parseFloat(m[1].replace(/\./g, '').replace(',', '.')),
+            formatted: m[1],
+            index: m.index
+        });
+    }
+
+    // Find numero documento patterns
+    const numDocRegex = /\b(\d{18,25})\b/g;
+    const numDocs = [];
+    while ((m = numDocRegex.exec(textNorm)) !== null) {
+        numDocs.push({ num: m[1], index: m.index });
+    }
+
+    // For each numDoc, find the 9 amounts that follow it and extract ente text
+    for (const nd of numDocs) {
+        const followingAmounts = allAmounts.filter(a => a.index > nd.index && a.index < nd.index + 800);
+        if (followingAmounts.length >= 8) {
+            const amounts = followingAmounts.slice(0, 9).map(a => a.value);
+            let totaleDef, caricoDef, impResiduo, totCarAff;
+
+            if (amounts.length >= 9) {
+                totaleDef = amounts[8];
+                caricoDef = amounts[5];
+                impResiduo = amounts[4];
+                totCarAff = amounts[0];
+            } else {
+                totaleDef = amounts[amounts.length - 1];
+                caricoDef = amounts[amounts.length - 4];
+                impResiduo = amounts.length >= 5 ? amounts[amounts.length - 5] : 0;
+                totCarAff = amounts[0];
+            }
+
+            // Extract ente: text between numDoc and first amount
+            let ente = '';
+            const ndEnd = nd.index + nd.num.length;
+            const firstAmtIdx = followingAmounts.length > 0 ? allAmounts.find(a => a.index > nd.index)?.index || ndEnd : ndEnd;
+            if (firstAmtIdx > ndEnd) {
+                ente = textNorm.substring(ndEnd, firstAmtIdx).trim();
+                // Clean: remove note markers like "-", leading/trailing junk
+                ente = ente.replace(/^[\s\-\(\)]+/, '').replace(/[\s\-]+$/, '').trim();
+                // Remove ambito provinciale names if they leaked in
+                ente = ente.replace(/^(ASCOLI\s*PICENO|ROMA|MILANO|NAPOLI|TORINO|FIRENZE|BOLOGNA|ANCONA|PERUGIA|BARI|PALERMO|CATANIA|GENOVA|VENEZIA|CAGLIARI|FERMO|MACERATA|PESARO)\s*/i, '').trim();
+            }
+
+            result.cartelle.push({
+                numero: nd.num,
+                ente: ente,
+                totaleCarico: totCarAff || 0,
+                caricoAttuale: amounts[1] || 0,
+                interessiMora: amounts[2] || 0,
+                oneriRiscossione: amounts[3] || 0,
+                importoResiduo: impResiduo || 0,
+                caricoDefinizione: caricoDef || 0,
+                interessiMoraDef: amounts[6] || 0,
+                oneriRiscossioneDef: amounts[7] || 0,
+                importoDefinizione: totaleDef
+            });
+        }
+    }
+
+    // Look for total amounts - usually the last 2 amounts in the document
+    if (allAmounts.length >= 2) {
+        const last2 = allAmounts.slice(-2);
+        // Totals are usually the largest values; verify they make sense
+        if (result.cartelle.length > 0) {
+            const sumDef = result.cartelle.reduce((s, c) => s + c.importoDefinizione, 0);
+            const sumRes = result.cartelle.reduce((s, c) => s + c.importoResiduo, 0);
+            // Check if last 2 match our computed sums (within 1€ tolerance)
+            if (Math.abs(last2[1].value - sumDef) < 1) {
+                result.totaleDefinizione = last2[1].value;
+                result.totaleOriginario = last2[0].value;
+            } else {
+                result.totaleDefinizione = sumDef;
+                result.totaleOriginario = sumRes;
+            }
+        } else {
+            // No cartelle found, use last 2 amounts as totals
+            result.totaleOriginario = Math.max(last2[0].value, last2[1].value);
+            result.totaleDefinizione = Math.min(last2[0].value, last2[1].value);
+            result.cartelle.push({
+                numero: 'Totale',
+                ente: '',
+                totaleCarico: 0,
+                caricoAttuale: 0,
+                interessiMora: 0,
+                oneriRiscossione: 0,
+                importoResiduo: result.totaleOriginario,
+                caricoDefinizione: result.totaleDefinizione,
+                interessiMoraDef: 0,
+                oneriRiscossioneDef: 0,
+                importoDefinizione: result.totaleDefinizione
+            });
+        }
+    }
+
+    if (result.totaleDefinizione === 0 && result.cartelle.length > 0) {
+        result.totaleDefinizione = result.cartelle.reduce((s, c) => s + c.importoDefinizione, 0);
+        result.totaleOriginario = result.cartelle.reduce((s, c) => s + c.importoResiduo, 0);
+    }
+
+    return result;
+}
+
+// ============================================================
+// DISPLAY PDF RESULTS
+// ============================================================
+function displayPdfCartelle(parsed) {
+    const listEl = document.getElementById('pdf-cartelle-list');
+    listEl.classList.remove('hidden');
+
+    let html = '<h4 style="margin-bottom:0.8rem; color:var(--primary)">Cartelle estratte dal PDF</h4>';
+
+    parsed.cartelle.forEach((c, i) => {
+        const sanzioniEscluse = c.importoResiduo - c.importoDefinizione;
+        html += `
+            <div class="pdf-cartella-item" style="grid-template-columns:1fr auto; gap:1rem">
+                <div>
+                    <strong style="font-family:monospace; font-size:0.82rem">${c.numero}</strong>
+                    ${c.ente ? `<div style="color:var(--text-light); font-size:0.82rem; margin-top:2px">${c.ente}</div>` : ''}
+                    <div class="details" style="margin-top:4px; display:flex; flex-wrap:wrap; gap:0.3rem 1rem">
+                        ${c.totaleCarico ? `<span>Carico affidato: <strong>${toEuro(c.totaleCarico)}</strong></span>` : ''}
+                        <span>Residuo: <strong>${toEuro(c.importoResiduo)}</strong></span>
+                        ${c.interessiMora > 0 ? `<span style="color:var(--danger)">Int. mora esclusi: ${toEuro(c.interessiMora)}</span>` : ''}
+                    </div>
+                </div>
+                <div style="text-align:right">
+                    <div class="amount-val">${toEuro(c.importoDefinizione)}</div>
+                    ${sanzioniEscluse > 0 ? `<div style="color:var(--success); font-size:0.75rem; font-weight:600">Risparmi ${toEuro(sanzioniEscluse)}</div>` : ''}
+                </div>
+            </div>
+        `;
+    });
+
+    const risparmio = parsed.totaleOriginario - parsed.totaleDefinizione;
+    const percRisparmio = parsed.totaleOriginario > 0 ? ((risparmio / parsed.totaleOriginario) * 100).toFixed(1) : 0;
+
+    html += `
+        <div class="totals-bar">
+            <div class="total-item">
+                <div class="total-label">Importo Residuo Totale</div>
+                <div class="total-value">${toEuro(parsed.totaleOriginario)}</div>
+            </div>
+            <div class="total-item">
+                <div class="total-label">Totale Definizione Agevolata</div>
+                <div class="total-value" style="font-size:1.4rem">${toEuro(parsed.totaleDefinizione)}</div>
+            </div>
+            ${risparmio > 0 ? `
+            <div class="total-item">
+                <div class="total-label">Risparmio (${percRisparmio}%)</div>
+                <div class="total-value" style="color:#68d391">${toEuro(risparmio)}</div>
+            </div>
+            ` : ''}
+        </div>
+    `;
+
+    listEl.innerHTML = html;
+
+    // Store for calculation
+    state.importoTotale = parsed.totaleDefinizione;
+    state.importoOriginario = parsed.totaleOriginario;
+    state.cartelle = parsed.cartelle;
+
+    // Auto-populate the "Dettaglio Cartelle" tab
+    populateDetailTab(parsed);
+}
+
+// ============================================================
+// AUTO-POPULATE DETAIL TAB FROM PDF DATA
+// ============================================================
+function populateDetailTab(parsed) {
+    // state.cartelle is already set by displayPdfCartelle
+    renderCartelleTable();
+    // Auto-expand cartelle section
+    expandSection('cartelle');
+
+    const statusEl = document.getElementById('pdf-status');
+    statusEl.innerHTML += '<br><small style="opacity:0.8">I dati sono stati precompilati nel dettaglio cartelle qui sotto. Puoi aggiungere o rimuovere cartelle dalla tabella.</small>';
+}
+
+// Drag & drop
+const uploadZone = document.getElementById('upload-zone');
+if (uploadZone) {
+    ['dragenter', 'dragover'].forEach(ev => {
+        uploadZone.addEventListener(ev, (e) => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+    });
+    ['dragleave', 'drop'].forEach(ev => {
+        uploadZone.addEventListener(ev, (e) => { e.preventDefault(); uploadZone.classList.remove('dragover'); });
+    });
+    uploadZone.addEventListener('drop', (e) => {
+        const files = e.dataTransfer.files;
+        if (files.length > 0 && files[0].type === 'application/pdf') {
+            document.getElementById('pdf-input').files = files;
+            handlePdfUpload({ target: { files: files } });
+        }
+    });
+}
+
+// ============================================================
+// CALCULATION ENGINE
+// ============================================================
+
+function getInputAmounts() {
+    let importo = 0;
+    let originario = 0;
+
+    // If cartelle are loaded, use their totals; otherwise read from input fields
+    if (state.cartelle.length > 0 && state.importoTotale > 0) {
+        importo = state.importoTotale;
+        originario = state.importoOriginario;
+    } else {
+        importo = parseEuro(document.getElementById('importo-totale').value);
+        originario = parseEuro(document.getElementById('importo-originario').value);
+    }
+    // Also allow manual override from the input fields
+    const manualImporto = parseEuro(document.getElementById('importo-totale').value);
+    const manualOriginario = parseEuro(document.getElementById('importo-originario').value);
+    if (manualImporto > 0) importo = manualImporto;
+    if (manualOriginario > 0) originario = manualOriginario;
+
+    return { importo, originario };
+}
+
+function calculateEqualInstallment(capital, annualRate, dates) {
+    // Binary search for equal installment amount (rate di pari ammontare)
+    // Interest at 3% annual from 01/08/2026 on declining balance
+    const n = dates.length;
+    if (n === 1) return capital; // Unica soluzione, no interest
+
+    let low = capital / n;
+    let high = capital / n * 3;
+
+    for (let iter = 0; iter < 200; iter++) {
+        const pmt = (low + high) / 2;
+        let balance = capital;
+
+        for (let i = 0; i < n; i++) {
+            let interest = 0;
+            if (dates[i] > INTEREST_START) {
+                const prev = i === 0 ? INTEREST_START :
+                    (dates[i - 1] > INTEREST_START ? dates[i - 1] : INTEREST_START);
+                const days = (dates[i] - prev) / (1000 * 60 * 60 * 24);
+                interest = balance * annualRate * days / 365;
+            }
+            balance = balance + interest - pmt;
+        }
+
+        if (Math.abs(balance) < 0.005) break;
+        if (balance > 0) low = pmt;
+        else high = pmt;
+    }
+
+    return (low + high) / 2;
+}
+
+function calculate() {
+    const { importo, originario } = getInputAmounts();
+
+    if (importo <= 0) {
+        alert('Inserisci un importo valido maggiore di zero.');
+        return;
+    }
+
+    const numRate = state.numRate;
+    const dates = generateScheduleDates(numRate);
+
+    // Calculate the equal installment amount (rate di pari ammontare, L. 199/2025)
+    const rataFissa = calculateEqualInstallment(importo, INTEREST_RATE, dates);
+
+    // Build amortization schedule
+    const schedule = [];
+    let residuo = importo;
+    let totalInteressi = 0;
+    let totalVersato = 0;
+
+    for (let i = 0; i < numRate; i++) {
+        const dataScadenza = dates[i];
+        let interessi = 0;
+
+        if (numRate > 1 && dataScadenza > INTEREST_START) {
+            const prevDate = i === 0 ? INTEREST_START :
+                (dates[i - 1] > INTEREST_START ? dates[i - 1] : INTEREST_START);
+            const days = (dataScadenza - prevDate) / (1000 * 60 * 60 * 24);
+            interessi = residuo * INTEREST_RATE * days / 365;
+        }
+
+        // Last installment: adjust to close exactly
+        const isLast = (i === numRate - 1);
+        const totaleRata = isLast ? residuo + interessi : rataFissa;
+        const quotaCapitale = totaleRata - interessi;
+
+        residuo -= quotaCapitale;
+        totalInteressi += interessi;
+        totalVersato += totaleRata;
+
+        schedule.push({
+            num: i + 1,
+            data: dataScadenza,
+            quotaCapitale: quotaCapitale,
+            interessi: interessi,
+            totaleRata: totaleRata,
+            residuo: Math.max(0, residuo)
+        });
+    }
+
+    renderResults(importo, originario, totalInteressi, totalVersato, schedule);
+}
+
+// ============================================================
+// RENDERING
+// ============================================================
+
+function renderResults(importo, originario, totalInteressi, totalVersato, schedule) {
+    const resultsEl = document.getElementById('results-section');
+    resultsEl.classList.add('visible');
+
+    // Summary cards
+    const summaryEl = document.getElementById('summary-cards');
+    const numRate = schedule.length;
+    const primaScadenza = formatDate(schedule[0].data);
+    const ultimaScadenza = formatDate(schedule[schedule.length - 1].data);
+
+    const rataFissa = numRate > 1 ? schedule[0].totaleRata : importo;
+
+    let cardsHtml = `
+        <div class="summary-card highlight">
+            <div class="label">Totale da versare</div>
+            <div class="value">${toEuro(totalVersato)}</div>
+            <div class="sub">Capitale + interessi</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">${numRate === 1 ? 'Importo unica soluzione' : 'Importo singola rata'}</div>
+            <div class="value">${toEuro(rataFissa)}</div>
+            <div class="sub">${numRate === 1 ? 'Scadenza: ' + primaScadenza : 'Rate di pari ammontare'}</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">Interessi di dilazione</div>
+            <div class="value">${toEuro(totalInteressi)}</div>
+            <div class="sub">${numRate === 1 ? 'Nessun interesse' : '3% annuo dal 01/08/2026'}</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">Numero Rate</div>
+            <div class="value">${numRate === 1 ? 'Unica' : numRate}</div>
+            <div class="sub">${primaScadenza} — ${ultimaScadenza}</div>
+        </div>
+    `;
+
+    if (originario > 0 && originario > importo) {
+        const risparmio = originario - importo;
+        const percRisparmio = ((risparmio / originario) * 100).toFixed(1);
+        cardsHtml += `
+            <div class="summary-card" style="border: 2px solid var(--success)">
+                <div class="label">Risparmio</div>
+                <div class="value" style="color:var(--success)">${toEuro(risparmio)}</div>
+                <div class="sub">${percRisparmio}% dell'importo originario</div>
+            </div>
+        `;
+    }
+
+    summaryEl.innerHTML = cardsHtml;
+
+    // Chart
+    const chartContainer = document.getElementById('chart-container');
+    if (originario > 0 && originario > importo) {
+        chartContainer.style.display = 'block';
+        const maxVal = originario;
+        const risparmio = originario - totalVersato;
+        const barChart = document.getElementById('bar-chart');
+
+        const h1 = Math.round((originario / maxVal) * 180);
+        const h2 = Math.round((totalVersato / maxVal) * 180);
+        const h3 = Math.round((risparmio / maxVal) * 180);
+
+        barChart.innerHTML = `
+            <div class="bar-group">
+                <div class="bar bar-original" style="height:${h1}px">
+                    <div class="bar-label">${toEuro(originario)}</div>
+                </div>
+                <div class="bar-caption">Importo originario</div>
+            </div>
+            <div class="bar-group">
+                <div class="bar bar-rottamazione" style="height:${h2}px">
+                    <div class="bar-label">${toEuro(totalVersato)}</div>
+                </div>
+                <div class="bar-caption">Da pagare (con interessi)</div>
+            </div>
+            <div class="bar-group">
+                <div class="bar bar-savings" style="height:${h3}px">
+                    <div class="bar-label" style="color:var(--info)">${toEuro(risparmio)}</div>
+                </div>
+                <div class="bar-caption">Risparmio</div>
+            </div>
+        `;
+    } else {
+        chartContainer.style.display = 'none';
+    }
+
+    // Schedule table
+    const tbody = document.getElementById('schedule-body');
+    let tbodyHtml = '';
+    let currentYear = 0;
+    let sumCapitale = 0, sumInteressi = 0, sumTotale = 0;
+
+    schedule.forEach((rata) => {
+        const year = rata.data.getFullYear();
+        if (year !== currentYear) {
+            currentYear = year;
+            tbodyHtml += `<tr class="year-separator"><td colspan="6">Anno ${year}</td></tr>`;
+        }
+
+        let badge = '';
+        if (rata.interessi === 0 && numRate > 1) badge = '<span class="badge badge-green">Senza interessi</span>';
+        else if (rata.num >= 52) badge = '<span class="badge badge-orange">Ultime rate</span>';
+
+        sumCapitale += rata.quotaCapitale;
+        sumInteressi += rata.interessi;
+        sumTotale += rata.totaleRata;
+
+        tbodyHtml += `
+            <tr>
+                <td><strong>${rata.num}</strong></td>
+                <td>${formatDate(rata.data)} ${badge}</td>
+                <td class="amount">${toEuroCompact(rata.quotaCapitale)}</td>
+                <td class="amount ${rata.interessi > 0 ? 'amount-interest' : ''}">${rata.interessi > 0 ? toEuroCompact(rata.interessi) : '—'}</td>
+                <td class="amount"><strong>${toEuroCompact(rata.totaleRata)}</strong></td>
+                <td class="amount">${toEuroCompact(rata.residuo)}</td>
+            </tr>
+        `;
+    });
+
+    tbody.innerHTML = tbodyHtml;
+
+    // Totals row
+    document.getElementById('totals-row').innerHTML = `
+        <span>Totali:</span>
+        <span>Capitale: <strong>${toEuro(sumCapitale)}</strong></span>
+        <span>Interessi: <strong>${toEuro(sumInteressi)}</strong></span>
+        <span>Totale versato: <strong>${toEuro(sumTotale)}</strong></span>
+    `;
+
+    // Show export buttons
+    document.getElementById('btn-export').style.display = 'inline-flex';
+    document.getElementById('btn-export-pdf').style.display = 'inline-flex';
+
+    // Scroll to results
+    resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ============================================================
+// CSV EXPORT
+// ============================================================
+
+function exportExcel() {
+    const { importo, originario } = getInputAmounts();
+    if (importo <= 0) return;
+    if (typeof XLSX === 'undefined') {
+        alert('Libreria Excel non caricata. Verifica la connessione internet.');
+        return;
+    }
+
+    const numRate = state.numRate;
+    const dates = generateScheduleDates(numRate);
+    const rataFissa = calculateEqualInstallment(importo, INTEREST_RATE, dates);
+    const wb = XLSX.utils.book_new();
+
+    // ================================================================
+    // SHEET 1: Riepilogo
+    // ================================================================
+    const riepilogoData = [
+        ['SIMULATORE ROTTAMAZIONE QUINQUIES'],
+        ['Legge n. 199/2025 - Art. 1, commi 82-93'],
+        [],
+        ['RIEPILOGO PIANO DI PAGAMENTO'],
+        [],
+        ['Importo definizione agevolata', importo],
+        ['Importo residuo originario', originario > 0 ? originario : ''],
+        ['Risparmio', originario > 0 ? originario - importo : ''],
+        ['Risparmio %', originario > 0 ? (originario - importo) / originario : ''],
+        [],
+        ['DETTAGLI RATEAZIONE'],
+        [],
+        ['Numero rate', numRate],
+        ['Importo singola rata', rataFissa],
+        ['Tasso interessi dilazione', INTEREST_RATE],
+        ['Decorrenza interessi', '01/08/2026'],
+        ['Prima scadenza', formatDate(dates[0])],
+        ['Ultima scadenza', formatDate(dates[dates.length - 1])],
+    ];
+
+    // Compute totals
+    let residuo = importo, totalInteressi = 0;
+    for (let i = 0; i < numRate; i++) {
+        let interessi = 0;
+        if (numRate > 1 && dates[i] > INTEREST_START) {
+            const prev = i === 0 ? INTEREST_START : (dates[i-1] > INTEREST_START ? dates[i-1] : INTEREST_START);
+            interessi = residuo * INTEREST_RATE * (dates[i] - prev) / (1000*60*60*24) / 365;
+        }
+        const isLast = (i === numRate - 1);
+        const tot = isLast ? residuo + interessi : rataFissa;
+        residuo -= (tot - interessi);
+        totalInteressi += interessi;
+    }
+
+    riepilogoData.push(['Totale interessi', totalInteressi]);
+    riepilogoData.push(['Totale da versare', importo + totalInteressi]);
+    riepilogoData.push([]);
+    riepilogoData.push(['Metodo di calcolo', 'Ammortamento alla francese (rate di pari ammontare)']);
+    riepilogoData.push(['Riferimento normativo', 'L. 199/2025, art. 1, comma 83']);
+
+    const wsRiepilogo = XLSX.utils.aoa_to_sheet(riepilogoData);
+
+    // Column widths
+    wsRiepilogo['!cols'] = [{ wch: 35 }, { wch: 20 }];
+
+    // Format currency cells
+    const eurFmt = '#.##0,00 €';
+    const pctFmt = '0,0%';
+    ['B6','B7','B8','B14','B19','B20'].forEach(ref => {
+        if (wsRiepilogo[ref] && typeof wsRiepilogo[ref].v === 'number') {
+            wsRiepilogo[ref].z = eurFmt;
+        }
+    });
+    if (wsRiepilogo['B9'] && typeof wsRiepilogo['B9'].v === 'number') wsRiepilogo['B9'].z = pctFmt;
+    if (wsRiepilogo['B15'] && typeof wsRiepilogo['B15'].v === 'number') wsRiepilogo['B15'].z = pctFmt;
+
+    XLSX.utils.book_append_sheet(wb, wsRiepilogo, 'Riepilogo');
+
+    // ================================================================
+    // SHEET 2: Piano Ammortamento
+    // ================================================================
+    const pianoHeader = ['N°', 'Scadenza', 'Quota Capitale', 'Interessi (3%)', 'Totale Rata', 'Debito Residuo', 'Giorni'];
+    const pianoRows = [pianoHeader];
+
+    residuo = importo;
+    let sumCap = 0, sumInt = 0, sumTot = 0;
+
+    for (let i = 0; i < numRate; i++) {
+        let interessi = 0;
+        let giorni = 0;
+        if (numRate > 1 && dates[i] > INTEREST_START) {
+            const prev = i === 0 ? INTEREST_START : (dates[i-1] > INTEREST_START ? dates[i-1] : INTEREST_START);
+            giorni = (dates[i] - prev) / (1000*60*60*24);
+            interessi = residuo * INTEREST_RATE * giorni / 365;
+        }
+        const isLast = (i === numRate - 1);
+        const totRata = isLast ? residuo + interessi : rataFissa;
+        const quotaCap = totRata - interessi;
+        residuo -= quotaCap;
+        sumCap += quotaCap;
+        sumInt += interessi;
+        sumTot += totRata;
+
+        // Format date as Excel serial date
+        const d = dates[i];
+        const excelDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+        pianoRows.push([
+            i + 1,
+            excelDate,
+            Math.round(quotaCap * 100) / 100,
+            Math.round(interessi * 100) / 100,
+            Math.round(totRata * 100) / 100,
+            Math.round(Math.max(0, residuo) * 100) / 100,
+            giorni
+        ]);
+    }
+
+    // Totals row
+    pianoRows.push([]);
+    pianoRows.push([
+        'TOTALE', '',
+        Math.round(sumCap * 100) / 100,
+        Math.round(sumInt * 100) / 100,
+        Math.round(sumTot * 100) / 100,
+        '', ''
+    ]);
+
+    const wsPiano = XLSX.utils.aoa_to_sheet(pianoRows);
+
+    // Column widths
+    wsPiano['!cols'] = [
+        { wch: 5 },   // N°
+        { wch: 14 },  // Scadenza
+        { wch: 16 },  // Quota Capitale
+        { wch: 16 },  // Interessi
+        { wch: 16 },  // Totale Rata
+        { wch: 16 },  // Residuo
+        { wch: 8 },   // Giorni
+    ];
+
+    // Format date and currency cells
+    for (let r = 1; r <= numRate; r++) {
+        const rowIdx = r + 1; // +1 for header
+        const bRef = XLSX.utils.encode_cell({ r: r, c: 1 });
+        if (wsPiano[bRef]) { wsPiano[bRef].z = 'dd/mm/yyyy'; wsPiano[bRef].t = 'd'; }
+        ['C','D','E','F'].forEach(col => {
+            const ref = col + rowIdx;
+            if (wsPiano[ref] && typeof wsPiano[ref].v === 'number') {
+                wsPiano[ref].z = '#,##0.00';
+            }
+        });
+    }
+    // Totals row format
+    const totRow = numRate + 3;
+    ['C','D','E'].forEach(col => {
+        const ref = col + totRow;
+        if (wsPiano[ref] && typeof wsPiano[ref].v === 'number') {
+            wsPiano[ref].z = '#,##0.00';
+        }
+    });
+
+    XLSX.utils.book_append_sheet(wb, wsPiano, 'Piano Ammortamento');
+
+    // ================================================================
+    // SHEET 3: Dettaglio Cartelle (if available)
+    // ================================================================
+    if (state.cartelle.length > 0) {
+        const cartHeader = ['N°', 'Numero Documento', 'Ente Creditore', 'Carico Affidato', 'Interessi Mora', 'Importo Residuo', 'Definizione Agevolata', 'Risparmio', 'Risparmio %'];
+        const cartRows = [cartHeader];
+        let stCar = 0, stInt = 0, stRes = 0, stDef = 0;
+
+        state.cartelle.forEach((c, i) => {
+            const risp = (c.importoResiduo || 0) - c.importoDefinizione;
+            const rispPerc = c.importoResiduo > 0 ? risp / c.importoResiduo : 0;
+            stCar += (c.totaleCarico || 0);
+            stInt += (c.interessiMora || 0);
+            stRes += (c.importoResiduo || 0);
+            stDef += c.importoDefinizione;
+            cartRows.push([
+                i + 1,
+                c.numero || '',
+                c.ente || '',
+                c.totaleCarico || 0,
+                c.interessiMora || 0,
+                c.importoResiduo || 0,
+                c.importoDefinizione,
+                Math.max(0, risp),
+                rispPerc
+            ]);
+        });
+
+        const stRisp = stRes - stDef;
+        cartRows.push([]);
+        cartRows.push([
+            'TOTALE', '', '',
+            stCar, stInt, stRes, stDef,
+            Math.max(0, stRisp),
+            stRes > 0 ? stRisp / stRes : 0
+        ]);
+
+        const wsCart = XLSX.utils.aoa_to_sheet(cartRows);
+        wsCart['!cols'] = [
+            { wch: 5 }, { wch: 24 }, { wch: 30 },
+            { wch: 16 }, { wch: 14 }, { wch: 16 },
+            { wch: 18 }, { wch: 14 }, { wch: 12 }
+        ];
+
+        // Format currency and percentage cells
+        for (let r = 1; r <= state.cartelle.length + 2; r++) {
+            ['D','E','F','G','H'].forEach(col => {
+                const ref = col + (r + 1);
+                if (wsCart[ref] && typeof wsCart[ref].v === 'number') {
+                    wsCart[ref].z = '#,##0.00';
+                }
+            });
+            const iRef = 'I' + (r + 1);
+            if (wsCart[iRef] && typeof wsCart[iRef].v === 'number') {
+                wsCart[iRef].z = '0.0%';
+            }
+        }
+
+        XLSX.utils.book_append_sheet(wb, wsCart, 'Dettaglio Cartelle');
+    }
+
+    // ================================================================
+    // DOWNLOAD
+    // ================================================================
+    XLSX.writeFile(wb, 'rottamazione_quinquies_piano.xlsx');
+}
+
+// ============================================================
+// PDF EXPORT
+// ============================================================
+
+function exportPDF() {
+    const importo = state.importoTotale;
+    const originario = state.importoOriginario;
+    if (!importo || importo <= 0) return;
+
+    if (typeof jspdf === 'undefined' && typeof window.jspdf === 'undefined') {
+        alert('Libreria jsPDF non caricata. Verifica la connessione internet.');
+        return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('p', 'mm', 'a4');
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const marginL = 15;
+    const marginR = 15;
+    const contentW = pageW - marginL - marginR;
+
+    const numRate = state.numRate;
+    const dates = generateScheduleDates(numRate);
+    const rataFissa = calculateEqualInstallment(importo, INTEREST_RATE, dates);
+
+    // Color palette
+    const primary = [37, 99, 235];      // #2563eb
+    const primaryDark = [30, 64, 175];   // #1e40af
+    const accent = [245, 158, 11];       // #f59e0b
+    const gray50 = [249, 250, 251];
+    const gray600 = [75, 85, 99];
+    const gray900 = [17, 24, 39];
+
+    // ---- HEADER & FOOTER function ----
+    function addHeader(doc) {
+        // Top accent bar
+        doc.setFillColor(...accent);
+        doc.rect(0, 0, pageW, 3, 'F');
+        // Header background
+        doc.setFillColor(...primary);
+        doc.rect(0, 3, pageW, 28, 'F');
+        // Title
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(18);
+        doc.setTextColor(255, 255, 255);
+        doc.text('Rottamazione Quinquies', marginL, 17);
+        // Subtitle
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.setTextColor(220, 230, 255);
+        doc.text('Piano di Rateazione - Legge n. 199/2025, Art. 1, commi 82-93', marginL, 25);
+        // Date on right
+        const oggi = new Date();
+        const dateStr = 'Generato il ' + oggi.toLocaleDateString('it-IT');
+        doc.setFontSize(9);
+        doc.text(dateStr, pageW - marginR, 25, { align: 'right' });
+        // Bottom accent line
+        doc.setFillColor(...accent);
+        doc.rect(0, 31, pageW, 1, 'F');
+    }
+
+    function addFooter(doc, pageNum, totalPages) {
+        const footerY = pageH - 12;
+        // Top line
+        doc.setDrawColor(200, 200, 200);
+        doc.setLineWidth(0.3);
+        doc.line(marginL, footerY - 3, pageW - marginR, footerY - 3);
+        // Footer text
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(...gray600);
+        doc.text('\u00a9 2026 Giacomo Greci', marginL, footerY);
+        doc.text('Pagina ' + pageNum + ' di ' + totalPages, pageW - marginR, footerY, { align: 'right' });
+    }
+
+    // ---- BUILD AMORTIZATION DATA ----
+    let residuo = importo, totalInteressi = 0;
+    const pianoRows = [];
+    for (let i = 0; i < numRate; i++) {
+        let interessi = 0, giorni = 0;
+        if (numRate > 1 && dates[i] > INTEREST_START) {
+            const prev = i === 0 ? INTEREST_START : (dates[i-1] > INTEREST_START ? dates[i-1] : INTEREST_START);
+            giorni = Math.round((dates[i] - prev) / (1000*60*60*24));
+            interessi = residuo * INTEREST_RATE * giorni / 365;
+        }
+        const isLast = (i === numRate - 1);
+        const totRata = isLast ? residuo + interessi : rataFissa;
+        const quotaCap = totRata - interessi;
+        residuo -= quotaCap;
+        totalInteressi += interessi;
+        pianoRows.push([
+            (i + 1).toString(),
+            formatDate(dates[i]),
+            toEuro(quotaCap),
+            toEuro(interessi),
+            toEuro(totRata),
+            toEuro(Math.max(0, residuo)),
+            giorni.toString()
+        ]);
+    }
+    const totaleVersare = importo + totalInteressi;
+
+    // ---- PAGE 1: HEADER + SUMMARY ----
+    addHeader(doc);
+    let y = 40;
+
+    // Section: Riepilogo
+    doc.setFillColor(...primaryDark);
+    doc.roundedRect(marginL, y, contentW, 8, 1.5, 1.5, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(255, 255, 255);
+    doc.text('RIEPILOGO PIANO DI PAGAMENTO', marginL + 4, y + 5.5);
+    y += 14;
+
+    // Summary cards - 2 columns
+    function drawSummaryCard(x, y, w, h, label, value, highlight) {
+        doc.setFillColor(...(highlight ? [254, 243, 199] : gray50));
+        doc.roundedRect(x, y, w, h, 2, 2, 'F');
+        doc.setDrawColor(220, 220, 220);
+        doc.setLineWidth(0.2);
+        doc.roundedRect(x, y, w, h, 2, 2, 'S');
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(...gray600);
+        doc.text(label, x + 4, y + 6);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.setTextColor(...(highlight ? [180, 83, 9] : gray900));
+        doc.text(value, x + 4, y + 14);
+    }
+
+    const cardW = (contentW - 6) / 2;
+    const cardH = 18;
+    drawSummaryCard(marginL, y, cardW, cardH, 'Importo definizione agevolata', toEuro(importo), false);
+    drawSummaryCard(marginL + cardW + 6, y, cardW, cardH, 'Numero rate', numRate.toString(), false);
+    y += cardH + 4;
+    drawSummaryCard(marginL, y, cardW, cardH, 'Importo singola rata', toEuro(rataFissa), true);
+    drawSummaryCard(marginL + cardW + 6, y, cardW, cardH, 'Tasso interessi dilazione', '3,00% annuo', false);
+    y += cardH + 4;
+    drawSummaryCard(marginL, y, cardW, cardH, 'Totale interessi', toEuro(totalInteressi), false);
+    drawSummaryCard(marginL + cardW + 6, y, cardW, cardH, 'Totale da versare', toEuro(totaleVersare), true);
+    y += cardH + 4;
+
+    if (originario > 0) {
+        const risparmio = originario - importo;
+        const rispPct = ((risparmio / originario) * 100).toFixed(1) + '%';
+        drawSummaryCard(marginL, y, cardW, cardH, 'Importo residuo originario', toEuro(originario), false);
+        drawSummaryCard(marginL + cardW + 6, y, cardW, cardH, 'Risparmio', toEuro(risparmio) + ' (' + rispPct + ')', true);
+        y += cardH + 4;
+    }
+
+    // Method info box
+    doc.setFillColor(239, 246, 255);
+    doc.roundedRect(marginL, y, contentW, 12, 1.5, 1.5, 'F');
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(8);
+    doc.setTextColor(...primary);
+    doc.text('Metodo di calcolo: Ammortamento alla francese (rate di pari ammontare) - Decorrenza interessi: 01/08/2026', marginL + 4, y + 7);
+    y += 18;
+
+    // ---- AMORTIZATION TABLE ----
+    doc.setFillColor(...primaryDark);
+    doc.roundedRect(marginL, y, contentW, 8, 1.5, 1.5, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(255, 255, 255);
+    doc.text('PIANO DI AMMORTAMENTO', marginL + 4, y + 5.5);
+    y += 12;
+
+    doc.autoTable({
+        startY: y,
+        head: [['N\u00b0', 'Scadenza', 'Quota Capitale', 'Interessi (3%)', 'Totale Rata', 'Debito Residuo', 'GG']],
+        body: pianoRows,
+        showHead: 'everyPage',
+        theme: 'grid',
+        styles: {
+            fontSize: 7.5,
+            cellPadding: 2,
+            lineColor: [220, 220, 220],
+            lineWidth: 0.2,
+            textColor: gray900,
+            font: 'helvetica'
+        },
+        headStyles: {
+            fillColor: primary,
+            textColor: [255, 255, 255],
+            fontStyle: 'bold',
+            fontSize: 8,
+            halign: 'center'
+        },
+        columnStyles: {
+            0: { halign: 'center', cellWidth: 10 },
+            1: { halign: 'center', cellWidth: 24 },
+            2: { halign: 'right', cellWidth: 28 },
+            3: { halign: 'right', cellWidth: 24 },
+            4: { halign: 'right', cellWidth: 28, fontStyle: 'bold' },
+            5: { halign: 'right', cellWidth: 28 },
+            6: { halign: 'center', cellWidth: 12 }
+        },
+        alternateRowStyles: {
+            fillColor: [248, 250, 252]
+        },
+        didParseCell: function(data) {
+            // Highlight first row if no interest
+            if (data.section === 'body' && data.row.index === 0 && numRate > 1) {
+                if (data.column.index === 3) {
+                    const val = pianoRows[0][3];
+                    if (val === toEuro(0)) {
+                        data.cell.styles.textColor = [22, 163, 74];
+                        data.cell.styles.fontStyle = 'italic';
+                    }
+                }
+            }
+            // Bold last row
+            if (data.section === 'body' && data.row.index === pianoRows.length - 1) {
+                data.cell.styles.fillColor = [254, 243, 199];
+                data.cell.styles.fontStyle = 'bold';
+            }
+        },
+        margin: { left: marginL, right: marginR, top: 38 }
+    });
+
+    // ---- DETTAGLIO CARTELLE (if available) ----
+    if (state.cartelle.length > 0) {
+        let cartY = doc.lastAutoTable.finalY + 10;
+        // Check if we need a new page
+        if (cartY > pageH - 50) {
+            doc.addPage();
+            addHeader(doc);
+            cartY = 40;
+        }
+
+        doc.setFillColor(...primaryDark);
+        doc.roundedRect(marginL, cartY, contentW, 8, 1.5, 1.5, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(255, 255, 255);
+        doc.text('DETTAGLIO CARTELLE', marginL + 4, cartY + 5.5);
+        cartY += 12;
+
+        const cartHead = [['N\u00b0', 'Numero Documento', 'Ente Creditore', 'Carico Affidato', 'Importo Residuo', 'Definizione Agev.', 'Risparmio']];
+        const cartBody = state.cartelle.map((c, i) => {
+            const risp = (c.importoResiduo || 0) - (c.importoDefinizione || 0);
+            return [
+                (i+1).toString(),
+                c.numero || '-',
+                c.ente || '-',
+                toEuro(c.totaleCarico || 0),
+                toEuro(c.importoResiduo || 0),
+                toEuro(c.importoDefinizione || 0),
+                toEuro(risp > 0 ? risp : 0)
+            ];
+        });
+
+        // Totals row
+        const totCarico = state.cartelle.reduce((s, c) => s + (c.totaleCarico || 0), 0);
+        const totResiduo = state.cartelle.reduce((s, c) => s + (c.importoResiduo || 0), 0);
+        const totDef = state.cartelle.reduce((s, c) => s + (c.importoDefinizione || 0), 0);
+        const totRisp = totResiduo - totDef;
+        cartBody.push(['', 'TOTALE', '', toEuro(totCarico), toEuro(totResiduo), toEuro(totDef), toEuro(totRisp > 0 ? totRisp : 0)]);
+
+        doc.autoTable({
+            startY: cartY,
+            head: cartHead,
+            body: cartBody,
+            showHead: 'everyPage',
+            theme: 'grid',
+            styles: {
+                fontSize: 7,
+                cellPadding: 2,
+                lineColor: [220, 220, 220],
+                lineWidth: 0.2,
+                textColor: gray900,
+                font: 'helvetica'
+            },
+            headStyles: {
+                fillColor: primary,
+                textColor: [255, 255, 255],
+                fontStyle: 'bold',
+                fontSize: 7.5,
+                halign: 'center'
+            },
+            columnStyles: {
+                0: { halign: 'center', cellWidth: 8 },
+                1: { cellWidth: 38, overflow: 'linebreak' },
+                2: { cellWidth: 40, overflow: 'linebreak' },
+                3: { halign: 'right', cellWidth: 22 },
+                4: { halign: 'right', cellWidth: 22 },
+                5: { halign: 'right', cellWidth: 22 },
+                6: { halign: 'right', cellWidth: 20 }
+            },
+            alternateRowStyles: {
+                fillColor: [248, 250, 252]
+            },
+            didParseCell: function(data) {
+                // Bold total row
+                if (data.section === 'body' && data.row.index === cartBody.length - 1) {
+                    data.cell.styles.fillColor = [219, 234, 254];
+                    data.cell.styles.fontStyle = 'bold';
+                }
+            },
+            margin: { left: marginL, right: marginR, top: 38 }
+        });
+    }
+
+    // ---- ADD HEADERS & FOOTERS TO ALL PAGES ----
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let p = 1; p <= totalPages; p++) {
+        doc.setPage(p);
+        addHeader(doc);
+        addFooter(doc, p, totalPages);
+    }
+
+    // ---- SAVE ----
+    doc.save('rottamazione_quinquies_piano.pdf');
+}
+
+// ============================================================
+// RESET
+// ============================================================
+
+function resetAll() {
+    document.getElementById('importo-totale').value = '';
+    document.getElementById('importo-originario').value = '';
+    document.getElementById('results-section').classList.remove('visible');
+    document.getElementById('btn-export').style.display = 'none';
+    document.getElementById('btn-export-pdf').style.display = 'none';
+    state.importoTotale = 0;
+    state.importoOriginario = 0;
+    state.cartelle = [];
+    // Reset detail table
+    renderCartelleTable();
+    // Reset PDF tab
+    document.getElementById('pdf-cartelle-list').classList.add('hidden');
+    document.getElementById('pdf-cartelle-list').innerHTML = '';
+    document.getElementById('pdf-status').style.display = 'none';
+    document.getElementById('pdf-input').value = '';
+}
+
+// ============================================================
+// PRELOAD DATA FROM PDF VISIBLE IN CONTEXT
+// ============================================================
+
+// Preload the data from the sample PDF provided by the user
+(function preloadSampleData() {
+    // The uploaded PDF shows cartella data - we can set some example values
+    // Users will override with their own data
+})();
+</script>
+
+</body>
+</html>
