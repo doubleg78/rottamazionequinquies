@@ -1147,16 +1147,19 @@ async function handlePdfUpload(event) {
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 
         // Extract text items with spatial coordinates for accurate table parsing
+        // Y is flipped: y = viewport.height - transform[5] so that
+        // lower Y = top of page, higher Y = bottom of page
         let allItems = [];
         for (let p = 1; p <= pdf.numPages; p++) {
             const page = await pdf.getPage(p);
+            const vp = page.getViewport({ scale: 1.0 });
             const content = await page.getTextContent();
             content.items.forEach(item => {
                 if (item.str.trim()) {
                     allItems.push({
                         text: item.str.trim(),
                         x: Math.round(item.transform[4]),
-                        y: Math.round(item.transform[5]),
+                        y: Math.round(vp.height - item.transform[5]),
                         page: p
                     });
                 }
@@ -1206,271 +1209,339 @@ function parseEuroAmount(str) {
 // ============================================================
 // SPATIAL PDF PARSER (primary - uses x,y coordinates)
 // ============================================================
-// AdER "Prospetto Informativo" table structure:
-// Columns (left to right):
-// Ambito prov. | Numero documento | Note | Ente | Tot.carico affidato |
-// Carico | Int.mora | Oneri risc. | Importo residuo |
-// Carico(def) | Int.mora(def) | Oneri risc.(def) | TOTALE(def)
-//
-// Each data row has 9 euro amounts. The last row has 2 totals.
+// AdER "Prospetto Informativo" — TRANSPOSED TABLE layout:
+//   - NumDocs are COLUMNS (all on the same Y row per page)
+//   - 9 amount types are ROWS (stacked vertically)
+//   - Each page has N numDoc columns × 9 amount rows
+//   - We match amounts to numDocs by X-coordinate proximity
 
 function parsePdfSpatial(items) {
     const result = {
         cartelle: [],
-        totaleOriginario: 0,      // sum of "Importo residuo" column
-        totaleDefinizione: 0,      // sum of "TOTALE" definizione column
-        totaleCarico: 0            // sum of "Totale carico affidato"
+        totaleOriginario: 0,
+        totaleDefinizione: 0,
+        totaleCarico: 0
     };
 
-    // Group items by Y coordinate (same row = similar Y, within 4px tolerance)
-    const rows = [];
-    const sortedItems = [...items].sort((a, b) => {
-        if (a.page !== b.page) return a.page - b.page;
-        // PDF Y is bottom-up, so higher Y = higher on page
-        if (Math.abs(a.y - b.y) > 4) return b.y - a.y; // top to bottom
-        return a.x - b.x; // left to right
-    });
+    const Y_MERGE = 15;  // merge amount rows within 15px
+    const X_MATCH = 30;  // max X distance to match amount to numDoc
 
-    let currentRow = [];
-    let currentY = null;
-    let currentPage = null;
-
-    for (const item of sortedItems) {
-        if (currentY === null || Math.abs(item.y - currentY) > 4 || item.page !== currentPage) {
-            if (currentRow.length > 0) rows.push([...currentRow]);
-            currentRow = [item];
-            currentY = item.y;
-            currentPage = item.page;
-        } else {
-            currentRow.push(item);
-        }
-    }
-    if (currentRow.length > 0) rows.push(currentRow);
-
-    // Sort items within each row by X
-    rows.forEach(row => row.sort((a, b) => a.x - b.x));
-
-    // Helper: extract euro amounts from a row
-    function extractAmounts(row) {
-        const amounts = [];
-        const amtRegex = /€?\s*(\d{1,3}(?:\.\d{3})*,\d{2})/;
-        // Merge row texts and re-split to handle split amounts
-        const fullRowText = row.map(r => r.text).join(' ');
-        const globalAmtRegex = /€?\s*(\d{1,3}(?:\.\d{3})*,\d{2})/g;
-        let m;
-        while ((m = globalAmtRegex.exec(fullRowText)) !== null) {
-            amounts.push(parseFloat(m[1].replace(/\./g, '').replace(',', '.')));
-        }
-        return amounts;
+    function parseEuroVal(s) {
+        return parseFloat(s.replace(/\./g, '').replace(',', '.'));
     }
 
-    // Helper: extract numero documento (long digit sequence 15-25 chars)
-    function extractNumDoc(row) {
-        const fullText = row.map(r => r.text).join(' ');
-        // Match long number sequences (possibly with spaces): e.g. 00820230012850025000
-        const match = fullText.match(/\b(\d[\d\s]{14,25}\d)\b/);
-        if (match) return match[1].replace(/\s/g, '');
-        return null;
+    // ── Step 1: Group all items by page ──────────────────────────
+    const pageMap = {};
+    for (const item of items) {
+        const p = item.page || 1;
+        if (!pageMap[p]) pageMap[p] = [];
+        pageMap[p].push(item);
     }
 
-    // Helper: extract ente using X coordinates
-    // The AdER table column order is: Ambito | NumDoc | Note | Ente | amounts...
-    // The ente column sits between the numero documento / note column and the first € amount.
-    // Strategy: find the X of the numero documento item, find the X of the first € item,
-    // then collect all text items whose X is between those two boundaries (the ente column zone).
-    function extractEnte(row) {
-        // Find the item containing the numero documento (long digit string)
-        let numDocX = -1;
-        let numDocEndX = 0;
-        for (const item of row) {
-            if (/\d{15,25}/.test(item.text.replace(/\s/g, ''))) {
-                numDocX = item.x;
-                // Estimate end of numDoc column: numDoc text width is roughly its char count * 4-5
-                numDocEndX = item.x + item.text.length * 4;
-                break;
-            }
-        }
+    const pageNums = Object.keys(pageMap).map(Number).sort((a, b) => a - b);
+    console.log('[PDF Parser] Pages:', pageNums.length);
 
-        // Find the first item containing a € amount
-        let firstAmountX = Infinity;
-        for (const item of row) {
-            if (/€?\s*\d{1,3}(?:\.\d{3})*,\d{2}/.test(item.text)) {
-                if (item.x < firstAmountX) firstAmountX = item.x;
-            }
-        }
+    // ── Step 2: Process each page independently ─────────────────
+    // On each page:
+    //   a) Find numDocs (long digit sequences) → these are column headers
+    //   b) Find euro amounts (excluding numDoc row) → these are data cells
+    //   c) Group amounts into 9 rows by Y
+    //   d) Match each amount to nearest numDoc by X
+    //   e) Build 9-value tuple per numDoc
 
-        if (numDocX < 0 || firstAmountX === Infinity) {
-            // Fallback: try text-based extraction
-            const fullText = row.map(r => r.text).join(' ');
-            const amtIdx = fullText.search(/€?\s*\d{1,3}(?:\.\d{3})*,\d{2}/);
-            if (amtIdx > 0) {
-                let enteText = fullText.substring(0, amtIdx).trim();
-                enteText = enteText.replace(/\b\d{15,25}\b/g, '').trim();
-                enteText = enteText.replace(/^[\s\-]+/, '').trim();
-                return enteText;
-            }
-            return '';
-        }
+    const numDocPattern = /\d{15,25}/;
 
-        // Collect all text items in the ente column zone:
-        // X must be > numDocX (to skip ambito + numDoc) and < firstAmountX (before amounts)
-        // Use a threshold: items at least 20px right of numDoc start, and before the first amount
-        const enteItems = row.filter(item => {
-            const isNumDoc = /\d{15,25}/.test(item.text.replace(/\s/g, ''));
-            const isAmount = /€?\s*\d{1,3}(?:\.\d{3})*,\d{2}/.test(item.text);
-            const isAmbito = /^(ASCOLI|PICENO|ROMA|MILANO|NAPOLI|TORINO|FIRENZE|BOLOGNA|ANCONA|PERUGIA|BARI|PALERMO|CATANIA|GENOVA|VENEZIA|CAGLIARI|FERMO|MACERATA|PESARO)/i.test(item.text);
-            const isNote = /^[\s\-\(\)]*$/.test(item.text) && item.text.length <= 3;
-            // Keep items that are NOT numDoc, NOT amounts, NOT ambito, NOT note dash
-            // and are positioned in the ente zone
-            return !isNumDoc && !isAmount && !isAmbito && !isNote
-                && item.x > numDocX && item.x < firstAmountX;
-        });
+    for (const pageNum of pageNums) {
+        const pageData = pageMap[pageNum];
 
-        if (enteItems.length > 0) {
-            // Sort by Y (top to bottom for multi-line ente) then by X
-            enteItems.sort((a, b) => {
-                if (Math.abs(a.y - b.y) > 3) return b.y - a.y; // higher Y = higher on page
-                return a.x - b.x;
-            });
-            let enteText = enteItems.map(item => item.text).join(' ');
-            // Clean up
-            enteText = enteText.replace(/\s+/g, ' ').trim();
-            enteText = enteText.replace(/^[\-\s]+/, '').trim();
-            return enteText;
-        }
-
-        return '';
-    }
-
-    // Process rows: look for data rows (those with 9 amounts = one cartella)
-    // and total rows (those with exactly 2 large amounts at the end)
-    const dataRows = [];
-    const totalCandidates = [];
-
-    // First, try to merge adjacent rows that belong to the same logical table row
-    // (the ente name often spans multiple PDF lines)
-    const mergedRows = [];
-    for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
-        const amounts = extractAmounts(row);
-        const numDoc = extractNumDoc(row);
-
-        if (amounts.length >= 7 || numDoc) {
-            // This row likely starts a data entry
-            // Check if we need to absorb next rows that have NO amounts (continuation of ente text)
-            const merged = [...row];
-            let j = i + 1;
-            while (j < rows.length) {
-                const nextAmounts = extractAmounts(rows[j]);
-                const nextNumDoc = extractNumDoc(rows[j]);
-                if (nextAmounts.length === 0 && !nextNumDoc) {
-                    // Continuation row (probably ente text wrapping)
-                    merged.push(...rows[j]);
-                    j++;
-                } else {
-                    break;
+        // Find numDocs on this page
+        const numDocs = []; // [{text, x, y}]
+        for (const item of pageData) {
+            const clean = item.text.replace(/\s/g, '');
+            if (numDocPattern.test(clean)) {
+                const match = clean.match(/(\d{15,25})/);
+                if (match) {
+                    // Avoid duplicates (same numDoc appearing in different text fragments)
+                    const nd = match[1];
+                    if (!numDocs.find(d => d.text === nd)) {
+                        numDocs.push({ text: nd, x: item.x, y: item.y });
+                    }
                 }
             }
-            mergedRows.push(merged);
-            i = j - 1; // Skip absorbed rows
-        } else if (amounts.length >= 1 && amounts.length <= 3) {
-            // Could be a totals row
-            mergedRows.push(row);
-        } else if (amounts.length >= 4) {
-            // Partial data row - could be a split row (amounts on separate line)
-            mergedRows.push(row);
         }
-        // Skip rows with 0 amounts and no numDoc (headers, labels etc.)
-    }
 
-    // Now also try merging split data rows (where amounts are on a different y-line)
-    const finalRows = [];
-    for (let i = 0; i < mergedRows.length; i++) {
-        const row = mergedRows[i];
-        const amounts = extractAmounts(row);
-        const numDoc = extractNumDoc(row);
+        if (numDocs.length === 0) continue;
 
-        if (numDoc && amounts.length < 9 && i + 1 < mergedRows.length) {
-            // Check if next row has remaining amounts
-            const nextAmounts = extractAmounts(mergedRows[i + 1]);
-            const nextNumDoc = extractNumDoc(mergedRows[i + 1]);
-            if (!nextNumDoc && nextAmounts.length > 0 && amounts.length + nextAmounts.length >= 8) {
-                // Merge
-                finalRows.push([...row, ...mergedRows[i + 1]]);
-                i++; // skip next
-                continue;
+        // Sort numDocs by X (left to right)
+        numDocs.sort((a, b) => a.x - b.x);
+
+        // All numDocs should be at roughly the same Y
+        const numDocY = numDocs[0].y;
+
+        console.log(`[PDF Parser] Page ${pageNum}: ${numDocs.length} numDocs at y≈${Math.round(numDocY)}`);
+
+        // Find all euro amounts on this page, EXCLUDING the numDoc row
+        const amounts = []; // [{value, x, y}]
+        for (const item of pageData) {
+            if (Math.abs(item.y - numDocY) < Y_MERGE) continue; // skip numDoc row
+            const re = /€?\s*(\d{1,3}(?:\.\d{3})*,\d{2})/g;
+            let m;
+            while ((m = re.exec(item.text)) !== null) {
+                amounts.push({
+                    value: parseEuroVal(m[1]),
+                    x: item.x,
+                    y: item.y
+                });
             }
         }
-        finalRows.push(row);
-    }
 
-    // Parse each final row
-    for (const row of finalRows) {
-        const amounts = extractAmounts(row);
-        const numDoc = extractNumDoc(row);
+        if (amounts.length === 0) continue;
 
-        if (numDoc && amounts.length >= 8) {
-            // Full data row: 9 amounts per the table structure
-            // [totCarAff, carico, intMora, oneriRisc, impResiduo, caricoDef, intMoraDef, oneriRiscDef, totaleDef]
-            // Sometimes "totale carico affidato" is missing, giving 8 amounts
-            let totCarAff, carico, intMora, oneriRisc, impResiduo, caricoDef, intMoraDef, oneriRiscDef, totaleDef;
+        // Group amounts into rows by Y (with Y_MERGE tolerance)
+        amounts.sort((a, b) => a.y - b.y);
 
-            if (amounts.length >= 9) {
-                [totCarAff, carico, intMora, oneriRisc, impResiduo, caricoDef, intMoraDef, oneriRiscDef, totaleDef] = amounts;
-            } else if (amounts.length === 8) {
-                // Missing totCarAff
-                totCarAff = 0;
-                [carico, intMora, oneriRisc, impResiduo, caricoDef, intMoraDef, oneriRiscDef, totaleDef] = amounts;
+        const amountRows = [[]];
+        for (const a of amounts) {
+            const lastRow = amountRows[amountRows.length - 1];
+            if (lastRow.length === 0 || Math.abs(a.y - lastRow[lastRow.length - 1].y) <= Y_MERGE) {
+                lastRow.push(a);
             } else {
-                // Take last 4 as definizione, previous as situazione attuale
-                totaleDef = amounts[amounts.length - 1];
-                oneriRiscDef = amounts[amounts.length - 2];
-                intMoraDef = amounts[amounts.length - 3];
-                caricoDef = amounts[amounts.length - 4];
-                impResiduo = amounts.length >= 5 ? amounts[amounts.length - 5] : 0;
-                totCarAff = amounts.length >= 9 ? amounts[0] : 0;
-                carico = amounts.length >= 6 ? amounts[0] : totaleDef;
-                intMora = amounts.length >= 7 ? amounts[1] : 0;
-                oneriRisc = amounts.length >= 8 ? amounts[2] : 0;
+                amountRows.push([a]);
+            }
+        }
+
+        // Sort each row by X
+        amountRows.forEach(row => row.sort((a, b) => a.x - b.x));
+
+        // Sort rows by Y ascending (top → bottom visually)
+        amountRows.sort((a, b) => a[0].y - b[0].y);
+
+        console.log(`  ${amounts.length} amounts in ${amountRows.length} rows`);
+
+        // We expect 9 amount rows per page section
+        // Row mapping (ascending Y = top of page first):
+        // The AdER table reads BOTTOM-UP on the page, so ascending Y gives:
+        //   [0] TOTALE definizione agevolata  → importoDefinizione
+        //   [1] Oneri di riscossione (def)    → oneriRiscossioneDef
+        //   [2] Interessi di mora (def)       → interessiMoraDef
+        //   [3] Carico (definizione)          → caricoDefinizione
+        //   [4] IMPORTO RESIDUO               → importoResiduo
+        //   [5] Oneri di riscossione          → oneriRiscossione
+        //   [6] Interessi di mora             → interessiMora
+        //   [7] Carico (attuale)              → caricoAttuale
+        //   [8] Totale carico affidato        → totaleCarico
+
+        // For each numDoc, extract its amount from each row
+        for (const nd of numDocs) {
+            const values = []; // up to 9 values
+
+            for (const row of amountRows) {
+                // Find the amount in this row closest to nd.x
+                let best = null, bestDist = Infinity;
+                for (const a of row) {
+                    const dist = Math.abs(a.x - nd.x);
+                    if (dist < bestDist) {
+                        bestDist = dist;
+                        best = a;
+                    }
+                }
+
+                if (best && bestDist <= X_MATCH) {
+                    values.push(best.value);
+                }
             }
 
-            const ente = extractEnte(row);
+            console.log(`  NumDoc ${nd.text} (x=${nd.x}): ${values.length} values [${values.map(v => v.toFixed(2)).join(', ')}]`);
 
-            result.cartelle.push({
-                numero: numDoc,
-                ente: ente,
-                totaleCarico: totCarAff,
-                caricoAttuale: carico,
-                interessiMora: intMora,
-                oneriRiscossione: oneriRisc,
-                importoResiduo: impResiduo,
-                caricoDefinizione: caricoDef,
-                interessiMoraDef: intMoraDef,
-                oneriRiscossioneDef: oneriRiscDef,
-                importoDefinizione: totaleDef
-            });
-        } else if (!numDoc && amounts.length >= 1 && amounts.length <= 3) {
-            // Potential totals row
-            totalCandidates.push(amounts);
+            if (values.length >= 8) {
+                // Map values to cartella fields (ascending Y = top of page first)
+                let totaleDef, oneriRiscDef, intMoraDef, caricoDef, impResiduo;
+                let oneriRisc, intMora, caricoAtt, totCarAff;
+
+                if (values.length >= 9) {
+                    totaleDef = values[0];
+                    oneriRiscDef = values[1];
+                    intMoraDef = values[2];
+                    caricoDef = values[3];
+                    impResiduo = values[4];
+                    oneriRisc = values[5];
+                    intMora = values[6];
+                    caricoAtt = values[7];
+                    totCarAff = values[8];
+                } else {
+                    // 8 values — last field (totale carico) might be missing
+                    totaleDef = values[0];
+                    oneriRiscDef = values[1];
+                    intMoraDef = values[2];
+                    caricoDef = values[3];
+                    impResiduo = values[4];
+                    oneriRisc = values[5];
+                    intMora = values[6];
+                    caricoAtt = values[7];
+                    totCarAff = 0;
+                }
+
+                result.cartelle.push({
+                    numero: nd.text,
+                    ente: '',
+                    totaleCarico: totCarAff,
+                    caricoAttuale: caricoAtt,
+                    interessiMora: intMora,
+                    oneriRiscossione: oneriRisc,
+                    importoResiduo: impResiduo,
+                    caricoDefinizione: caricoDef,
+                    interessiMoraDef: intMoraDef,
+                    oneriRiscossioneDef: oneriRiscDef,
+                    importoDefinizione: totaleDef
+                });
+            }
         }
     }
 
-    // Find totals - look for the row with exactly 2 amounts (importo residuo totale + totale definizione)
-    // or use the last candidate
-    for (const tc of totalCandidates) {
-        if (tc.length === 2) {
-            result.totaleOriginario = tc[0]; // Importo residuo totale
-            result.totaleDefinizione = tc[1]; // Totale definizione agevolata
+    console.log(`[PDF Parser] Total cartelle extracted: ${result.cartelle.length}`);
+
+    // ── Step 3: Extract ente creditore per numDoc ──────────────
+    // Ente text lives in a narrow Y zone (y≈325-365) with two sub-rows:
+    //   y≈345: main text (INPS SEDE DI, FINANZIARIA, DIR.PROV.LE, etc.)
+    //   y≈335: second line (VERONA, ZIONE, UFFICIO, etc.)
+    // We use nearest-numDoc matching and extensive cleanup for split words.
+
+    const enteExcludePattern = /^(Ente|DEFINIZIONE|AGEVOLATA|PROSPETTO|INFORMATIVO|Note|Ambito|Numero|SITUAZIONE|Pagina|Elaborato)/i;
+
+    for (const pageNum of pageNums) {
+        const pageData = pageMap[pageNum];
+
+        // Find numDocs on this page
+        const pageNumDocs = [];
+        for (const item of pageData) {
+            const clean = item.text.replace(/\s/g, '');
+            if (numDocPattern.test(clean)) {
+                const match = clean.match(/(\d{15,25})/);
+                if (match && !pageNumDocs.find(d => d.text === match[1])) {
+                    pageNumDocs.push({ text: match[1], x: item.x, y: item.y });
+                }
+            }
+        }
+        if (pageNumDocs.length === 0) continue;
+        pageNumDocs.sort((a, b) => a.x - b.x);
+
+        // Tight ente zone: y=325-365 captures entity names, excludes noise rows
+        const enteZoneMinY = 325;
+        const enteZoneMaxY = 365;
+
+        const enteItems = pageData.filter(item => {
+            if (item.y < enteZoneMinY || item.y > enteZoneMaxY) return false;
+            const t = item.text.trim();
+            if (!t || t.length < 2) return false;
+            if (enteExcludePattern.test(t)) return false;
+            if (/€?\s*\d{1,3}(?:\.\d{3})*,\d{2}/.test(t)) return false;
+            if (numDocPattern.test(t.replace(/\s/g, ''))) return false;
+            if (/^\d+$/.test(t)) return false;
+            if (t === '-') return false;
+            return true;
+        });
+
+        // For each numDoc, collect ente items assigned by nearest-X matching
+        for (const nd of pageNumDocs) {
+            const matched = [];
+            for (const item of enteItems) {
+                let nearestNd = null, nearestDist = Infinity;
+                for (const nd2 of pageNumDocs) {
+                    const dist = Math.abs(item.x - nd2.x);
+                    if (dist < nearestDist) { nearestDist = dist; nearestNd = nd2; }
+                }
+                if (nearestNd === nd) matched.push(item);
+            }
+
+            if (matched.length > 0) {
+                matched.sort((a, b) => a.x - b.x);
+                let enteText = matched.map(m => m.text).join(' ')
+                    // Merge split words
+                    .replace(/AMMINISTRA\s+ZIONE/gi, 'AMMINISTRAZIONE')
+                    .replace(/TERRITORIA\s+LE\b/gi, 'TERRITORIALE')
+                    .replace(/\bTERRITORIA\b/g, 'TERRITORIALE')
+                    // Remove orphan fragments from adjacent columns
+                    .replace(/\bZIONE\b/gi, '')
+                    .replace(/\bAMMINISTRA\b/gi, '')
+                    .replace(/\bTERRITORIALE\s+(?=INPS)/gi, '')
+                    // Add proper separators
+                    .replace(/FINANZIARIA\s+DIR/gi, 'FINANZIARIA - DIR')
+                    .replace(/([A-Z]{3,})\s*-?\s+UFFICIO/gi, '$1 - UFFICIO')
+                    // Ensure full entity name for AMMINISTRAZIONE FINANZIARIA
+                    .replace(/(?<![A-Z])FINANZIARIA/gi, 'AMMINISTRAZIONE FINANZIARIA')
+                    .replace(/AMMINISTRAZIONE\s+AMMINISTRAZIONE/gi, 'AMMINISTRAZIONE')
+                    .replace(/UFFICIO(?!\s+TERRITORIALE)/gi, 'UFFICIO TERRITORIALE')
+                    .replace(/\s+/g, ' ').trim();
+
+                const cartella = result.cartelle.find(c => c.numero === nd.text);
+                if (cartella && !cartella.ente) {
+                    cartella.ente = enteText;
+                }
+            }
         }
     }
 
-    // If no totals found from dedicated row, compute from cartelle
+    // ── Step 4: Extract totals from pages without numDocs ───────
+    // (summary pages at the end of the PDF)
+    const totalCandidates = [];
+    for (const pageNum of pageNums) {
+        const pageData = pageMap[pageNum];
+        const hasNumDocs = pageData.some(item => numDocPattern.test(item.text.replace(/\s/g, '')));
+        if (hasNumDocs) continue;
+
+        // This is a summary page — look for totals
+        for (const item of pageData) {
+            const re = /€?\s*(\d{1,3}(?:\.\d{3})*,\d{2})/g;
+            let m;
+            const rowAmounts = [];
+            while ((m = re.exec(item.text)) !== null) {
+                rowAmounts.push(parseEuroVal(m[1]));
+            }
+            if (rowAmounts.length === 1) {
+                totalCandidates.push(rowAmounts[0]);
+            }
+        }
+    }
+
+    // Also look for specific total labels
+    for (const pageNum of pageNums) {
+        const pageData = pageMap[pageNum];
+        for (const item of pageData) {
+            if (/IMPORTO\s*RESIDUO\s*TOTALE/i.test(item.text)) {
+                // Next amount on this page near this Y should be the total
+                for (const item2 of pageData) {
+                    if (Math.abs(item2.y - item.y) < Y_MERGE && item2.x > item.x) {
+                        const m = item2.text.match(/(\d{1,3}(?:\.\d{3})*,\d{2})/);
+                        if (m) result.totaleOriginario = parseEuroVal(m[1]);
+                    }
+                }
+            }
+            if (/TOTALE\s*DEFINIZIONE\s*AGEVOLATA/i.test(item.text)) {
+                for (const item2 of pageData) {
+                    if (Math.abs(item2.y - item.y) < Y_MERGE && item2.x > item.x) {
+                        const m = item2.text.match(/(\d{1,3}(?:\.\d{3})*,\d{2})/);
+                        if (m) result.totaleDefinizione = parseEuroVal(m[1]);
+                    }
+                }
+            }
+        }
+    }
+
+    // Compute from cartelle if no dedicated totals found
     if (result.totaleDefinizione === 0 && result.cartelle.length > 0) {
         result.totaleDefinizione = result.cartelle.reduce((s, c) => s + c.importoDefinizione, 0);
     }
     if (result.totaleOriginario === 0 && result.cartelle.length > 0) {
         result.totaleOriginario = result.cartelle.reduce((s, c) => s + c.importoResiduo, 0);
     }
+
+    console.log('[PDF Parser] ═══ FINAL RESULT ═══');
+    console.log(`  Cartelle: ${result.cartelle.length}`);
+    console.log(`  Importo Residuo Totale: ${result.totaleOriginario.toFixed(2)}`);
+    console.log(`  Totale Definizione: ${result.totaleDefinizione.toFixed(2)}`);
+    result.cartelle.forEach((c, i) => {
+        console.log(`  [${i}] ${c.numero} → residuo=${c.importoResiduo.toFixed(2)}, def=${c.importoDefinizione.toFixed(2)}, carico=${c.totaleCarico.toFixed(2)}`);
+    });
 
     return result;
 }
